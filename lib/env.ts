@@ -9,6 +9,7 @@ const serverEnvironmentSchema = z
     DATABASE_URL: z.string().min(1),
     DIRECT_DATABASE_URL: z.string().min(1).optional(),
     AUTH_SECRET: z.string().min(32),
+    ADMIN_EMAILS: z.string().default(""),
     AI_PROVIDER: z.enum(["openai"]).default("openai"),
     OPENAI_API_KEY: z.string().min(1).optional(),
     LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
