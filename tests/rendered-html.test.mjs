@@ -4,7 +4,7 @@ import test from "node:test";
 
 const templateRoot = new URL("../", import.meta.url);
 
-async function render(pathname = "/", headers = {}) {
+async function render(pathname = "/", headers = {}, environment = {}) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set(
     "test",
@@ -25,6 +25,7 @@ async function render(pathname = "/", headers = {}) {
           throw new Error("Image binding should not be used in this test.");
         },
       },
+      ...environment,
     },
     {
       waitUntil() {},
@@ -45,6 +46,12 @@ test("server-renders the product-specific sign-in surface", async () => {
   assert.match(html, /Amazon, Flipkart, Meesho, Myntra and AJIO/);
   assert.match(html, /signin-with-chatgpt/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape/);
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.match(
+    response.headers.get("content-security-policy") ?? "",
+    /object-src 'none'/,
+  );
+  assert.ok(response.headers.get("x-request-id"));
 });
 
 test("protects the dashboard and renders it for an authenticated user", async () => {
@@ -87,6 +94,25 @@ test("protects product API routes without touching storage", async () => {
   }
 });
 
+test("reports production dependency health without caching", async () => {
+  const response = await render("/api/health");
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.ok(response.headers.get("x-request-id"));
+
+  const payload = await response.json();
+  assert.equal(payload.status, "degraded");
+  assert.equal(payload.services.database, "down");
+
+  const source = await readFile(
+    new URL("../app/api/health/route.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /SELECT 1 AS ok/);
+  assert.match(source, /database: "up"/);
+  assert.match(source, /status: 503/);
+});
+
 test("removes the disposable starter preview and starter assets", async () => {
   await assert.rejects(access(new URL("app/_sites-preview", templateRoot)));
   await assert.rejects(access(new URL("public/favicon.svg", templateRoot)));
@@ -124,4 +150,23 @@ test("ships catalogue filtering, pagination, and product editing controls", asyn
   assert.match(editor, /method: "PATCH"/);
   assert.match(editor, /Save changes/);
   assert.match(detail, /ProductEditDialog/);
+});
+
+test("ships administrator onboarding and an evidence-based launch gate", async () => {
+  const [onboarding, checklist] = await Promise.all([
+    readFile(new URL("../docs/ADMIN_ONBOARDING.md", import.meta.url), "utf8"),
+    readFile(
+      new URL("../docs/PHASE1_LAUNCH_CHECKLIST.md", import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(onboarding, /First product workflow/);
+  assert.match(onboarding, /affiliate disclosure/i);
+  assert.match(checklist, /\[x\] Database health endpoint/);
+  assert.match(checklist, /\[ \] `OPENAI_API_KEY`/);
+  assert.match(
+    checklist,
+    /Do not declare the complete Phase 1 launch finished/,
+  );
 });

@@ -28,6 +28,74 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
+const securityHeaders = {
+  "content-security-policy": [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self' https://chatgpt.com https://*.chatgpt.com",
+  ].join("; "),
+  "permissions-policy":
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "x-content-type-options": "nosniff",
+} as const;
+
+function routePattern(pathname: string): string {
+  return pathname
+    .replace(/^\/api\/products\/[^/]+/, (match) =>
+      match.replace(/^\/api\/products\/[^/]+/, "/api/products/:id"),
+    )
+    .replace(/^\/products\/[^/]+/, "/products/:id");
+}
+
+function finalizeResponse(
+  response: Response,
+  request: Request,
+  startedAt: number,
+): Response {
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(securityHeaders)) {
+    headers.set(name, value);
+  }
+  if (new URL(request.url).protocol === "https:") {
+    headers.set(
+      "strict-transport-security",
+      "max-age=31536000; includeSubDomains",
+    );
+  }
+  if (new URL(request.url).pathname.startsWith("/api/")) {
+    headers.set("cache-control", "no-store");
+  }
+
+  const requestId = headers.get("x-request-id") ?? crypto.randomUUID();
+  headers.set("x-request-id", requestId);
+  console.info(
+    JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: "info",
+      event: "http.request.completed",
+      requestId,
+      method: request.method,
+      route: routePattern(new URL(request.url).pathname),
+      status: response.status,
+      durationMs: Math.round(performance.now() - startedAt),
+    }),
+  );
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 // Image security config. SVG sources with .svg extension auto-skip the
 // optimization endpoint on the client side (served directly, no proxy).
 // To route SVGs through the optimizer (with security headers), set
@@ -40,11 +108,12 @@ const worker = {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<Response> {
+    const startedAt = performance.now();
     const url = new URL(request.url);
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
-      return handleImageOptimization(
+      const response = await handleImageOptimization(
         request,
         {
           fetchAsset: (path) =>
@@ -58,9 +127,11 @@ const worker = {
         },
         allowedWidths,
       );
+      return finalizeResponse(response, request, startedAt);
     }
 
-    return handler.fetch(request, env, ctx);
+    const response = await handler.fetch(request, env, ctx);
+    return finalizeResponse(response, request, startedAt);
   },
 };
 

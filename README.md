@@ -21,6 +21,9 @@ Live marketplace ingestion, policy intelligence, tracking, and optimization are
 intentionally reserved for Phases 2 and 3. See [Product scope](docs/PRODUCT.md)
 and [Architecture](docs/ARCHITECTURE.md).
 
+Operators should follow [Administrator onboarding](docs/ADMIN_ONBOARDING.md)
+and the evidence-based [Phase 1 launch checklist](docs/PHASE1_LAUNCH_CHECKLIST.md).
+
 ## Technology
 
 - Next.js 16, React 19, and strict TypeScript

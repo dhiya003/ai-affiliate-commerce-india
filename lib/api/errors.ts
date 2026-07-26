@@ -1,4 +1,5 @@
 import { ZodError } from "zod";
+import { logEvent } from "@/lib/observability/logger";
 import { apiFailure } from "./response";
 
 type PrismaKnownError = Error & {
@@ -32,6 +33,20 @@ export function handleApiError(
   requestId = crypto.randomUUID(),
 ) {
   if (error instanceof ApiError) {
+    if (error.status >= 500) {
+      logEvent("error", "api.request.failed", {
+        requestId,
+        code: error.code,
+        status: error.status,
+        errorType: error.name,
+      });
+    } else if (error.status === 429) {
+      logEvent("warn", "api.request.rate_limited", {
+        requestId,
+        code: error.code,
+        status: error.status,
+      });
+    }
     return apiFailure(
       {
         code: error.code,
@@ -75,9 +90,10 @@ export function handleApiError(
       );
     }
 
-    console.error("Database request failed.", {
+    logEvent("error", "database.request.failed", {
       requestId,
       code: error.code,
+      status: 503,
     });
 
     return apiFailure(
@@ -89,7 +105,11 @@ export function handleApiError(
     );
   }
 
-  console.error("Unhandled API error.", { requestId, error });
+  logEvent("error", "api.request.unhandled", {
+    requestId,
+    status: 500,
+    errorType: error instanceof Error ? error.name : typeof error,
+  });
 
   return apiFailure(
     {
