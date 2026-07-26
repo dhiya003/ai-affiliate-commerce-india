@@ -31,6 +31,29 @@ The successful final detail request used request ID
 `ca613785-f258-472f-877e-92c5cbeba9ff`. The final read-only cleanup check used
 request ID `7292a2a0-7cf6-4c12-98c5-3a0b69fc5438`.
 
+## Product-detail regression
+
+Live desktop QA of Sites version 6 found a Worker exception on
+`GET /products/amazon-earbuds`. Production request and Ray ID
+`a213966f1dd98007` recorded `Cannot convert undefined or null to object` while
+rendering score factors. The seeded score JSON predates the complete versioned
+score shape and did not include `breakdown`.
+
+The repository now normalizes incomplete legacy scores at the data boundary and
+the view also treats a missing breakdown defensively. Verification against the
+rebuilt production container proved:
+
+- the unpatched container reproduced the exact `Object.entries` failure and
+  returned `500`;
+- the patched container returned `200` for the same authenticated product route;
+- the rendered HTML contained the product name, opportunity score, Rating, and
+  Review volume factors; and
+- all 28 repository checks passed, including a regression assertion for the
+  compatibility path.
+
+Production verification of the corrected Sites release remains required after
+deployment.
+
 ## Dependency security
 
 - Next.js was upgraded from 16.2.6 to 16.2.12.

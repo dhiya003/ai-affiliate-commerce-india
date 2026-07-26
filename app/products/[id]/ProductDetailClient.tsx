@@ -97,7 +97,7 @@ export function ProductDetailClient({
   const [editing, setEditing] = useState(false);
 
   const scoreFactors = useMemo(() => {
-    if (!product.score) return [];
+    if (!product.score?.breakdown) return [];
     return Object.entries(product.score.breakdown);
   }, [product.score]);
 

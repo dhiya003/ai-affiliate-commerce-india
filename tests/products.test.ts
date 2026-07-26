@@ -105,3 +105,20 @@ test("Sites migration creates durable product tables, indexes, and seed data", a
     6,
   );
 });
+
+test("legacy seed scores are normalized before product detail rendering", async () => {
+  const repository = await readFile(
+    new URL("../lib/products/repository.ts", import.meta.url),
+    "utf8",
+  );
+  const detail = await readFile(
+    new URL("../app/products/[id]/ProductDetailClient.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(repository, /function productScore\(row: ProductRow\)/);
+  assert.match(repository, /parsed\.breakdown/);
+  assert.match(repository, /parsed\.explanation/);
+  assert.match(repository, /calculateOpportunityScore\(\{/);
+  assert.match(detail, /product\.score\?\.breakdown/);
+});

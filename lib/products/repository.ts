@@ -74,6 +74,37 @@ function parseJson<T>(value: string | null, fallback: T): T {
   }
 }
 
+function productScore(row: ProductRow): Product["score"] {
+  const parsed = parseJson<Partial<NonNullable<Product["score"]>> | null>(
+    row.score_json,
+    null,
+  );
+
+  if (
+    parsed &&
+    parsed.breakdown &&
+    typeof parsed.opportunityScore === "number" &&
+    parsed.explanation &&
+    Array.isArray(parsed.explanation.strongestFactors) &&
+    Array.isArray(parsed.explanation.cautions)
+  ) {
+    return parsed as NonNullable<Product["score"]>;
+  }
+
+  if (row.opportunity_score == null && !row.score_json) return null;
+
+  return calculateOpportunityScore({
+    productId: row.id,
+    rating: row.rating,
+    reviewCount: row.review_count,
+    currentPrice: row.current_price,
+    originalPrice: row.original_price,
+    commissionRate: row.commission_rate,
+    sellerRating: row.seller_rating,
+    returnRisk: row.return_risk,
+  });
+}
+
 function mapProduct(row: ProductRow): Product {
   return {
     id: row.id,
@@ -99,7 +130,7 @@ function mapProduct(row: ProductRow): Product {
     notes: row.notes,
     tags: parseJson<string[]>(row.tags_json, []),
     opportunityScore: row.opportunity_score,
-    score: parseJson(row.score_json, null),
+    score: productScore(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
