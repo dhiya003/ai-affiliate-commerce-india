@@ -13,7 +13,6 @@ import {
   RefreshCw,
   Save,
   ShieldCheck,
-  ShoppingBag,
   Sparkles,
   Star,
   Trash2,
@@ -24,6 +23,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ContentStudio } from "@/components/content/ContentStudio";
 import { ProductEditDialog } from "@/components/products/ProductEditDialog";
+import { ProductMedia } from "@/components/products/ProductMedia";
 import type { GeneratedContent } from "@/lib/content/schema";
 import type {
   Product,
@@ -284,9 +284,11 @@ export function ProductDetailClient({
             <section className="overflow-hidden rounded-3xl border border-[#dce2db] bg-white shadow-[0_14px_44px_rgba(40,62,48,0.06)]">
               <div className="grid md:grid-cols-[0.72fr_1.28fr]">
                 <div className="relative grid min-h-64 place-items-center bg-[linear-gradient(145deg,#dff1e3,#fff4d5)] p-8">
-                  <ShoppingBag
-                    className="size-28 text-[#26723d] drop-shadow-sm"
-                    strokeWidth={1.1}
+                  <ProductMedia
+                    imageUrl={product.imageUrl}
+                    alt={`${product.name} product image`}
+                    imageClassName="absolute inset-0 size-full object-cover"
+                    iconClassName="size-28 text-[#26723d] drop-shadow-sm"
                   />
                   <span className="absolute top-5 left-5 rounded-full bg-white/90 px-3 py-1.5 text-[10px] font-bold tracking-wide text-[#4a594f] uppercase">
                     {product.category}

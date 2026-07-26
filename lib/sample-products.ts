@@ -132,6 +132,7 @@ export interface DashboardProduct {
   commissionEstimate: number;
   discount: number;
   strongestFactors: string[];
+  imageUrl?: string | null;
 }
 
 export function getSampleProducts(): DashboardProduct[] {

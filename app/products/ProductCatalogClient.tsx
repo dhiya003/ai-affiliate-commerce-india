@@ -17,6 +17,7 @@ import {
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
 import { ProductIntakeDialog } from "@/components/products/ProductIntakeDialog";
+import { ProductMedia } from "@/components/products/ProductMedia";
 import {
   MARKETPLACES,
   PRODUCT_STATUSES,
@@ -444,7 +445,15 @@ function ProductCard({ product }: { product: Product }) {
       : 0;
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-[#dce2db] bg-white shadow-[0_8px_26px_rgba(40,62,48,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(40,62,48,0.09)]">
+    <article className="group overflow-hidden rounded-2xl border border-[#dce2db] bg-white shadow-[0_8px_26px_rgba(40,62,48,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(40,62,48,0.09)]">
+      <div className="grid h-36 place-items-center overflow-hidden bg-[linear-gradient(145deg,#dff1e3,#fff4d5)] text-[#26723d]">
+        <ProductMedia
+          imageUrl={product.imageUrl}
+          alt={`${product.name} product image`}
+          imageClassName="size-full object-cover transition duration-300 group-hover:scale-[1.02]"
+          iconClassName="size-14 opacity-80 drop-shadow-sm"
+        />
+      </div>
       <div className="flex items-start justify-between gap-4 p-5">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold tracking-wide uppercase">

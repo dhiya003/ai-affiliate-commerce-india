@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ProductIntakeDialog } from "@/components/products/ProductIntakeDialog";
+import { ProductMedia } from "@/components/products/ProductMedia";
 import type { Product } from "@/lib/products/types";
 import type { DashboardProduct } from "@/lib/sample-products";
 import { chatGPTSignOutPath } from "../chatgpt-auth";
@@ -83,6 +84,7 @@ function toDashboardProduct(product: Product): DashboardProduct {
           )
         : 0,
     strongestFactors: product.score?.explanation.strongestFactors ?? [],
+    imageUrl: product.imageUrl,
   };
 }
 
@@ -333,7 +335,7 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
                 `${Math.round(liveProducts[0]?.opportunityScore ?? 0)}`,
                 TrendingUp,
               ],
-              ["Opportunities", `${liveProducts.length}`, ShoppingBag],
+              ["Opportunities", `${liveProducts.length}`, PackagePlus],
               ["Avg. commission", "₹79", Sparkles],
               ["Rising today", "18", Flame],
             ].map(([label, value, Icon], index) => {
@@ -423,10 +425,11 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
                           className={`size-4 ${saved ? "fill-[#256d3a] text-[#256d3a]" : "text-[#607066]"}`}
                         />
                       </button>
-                      <ShoppingBag
-                        className="size-16 opacity-80 drop-shadow-sm"
-                        strokeWidth={1.35}
-                        aria-hidden="true"
+                      <ProductMedia
+                        imageUrl={product.imageUrl}
+                        alt={`${product.name} product image`}
+                        imageClassName="size-full object-cover"
+                        iconClassName="size-16 opacity-80 drop-shadow-sm"
                       />
                     </div>
                     <div className="p-5">

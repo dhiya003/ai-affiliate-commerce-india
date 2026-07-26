@@ -47,6 +47,24 @@ test("rejects impossible price and rating values", () => {
   }
 });
 
+test("accepts only HTTP(S) product and media URLs", () => {
+  assert.equal(
+    productInputSchema.safeParse({
+      ...validProduct,
+      imageUrl: "https://images.example.com/product.webp",
+    }).success,
+    true,
+  );
+  assert.equal(
+    productInputSchema.safeParse({
+      ...validProduct,
+      productUrl: "javascript:alert(1)",
+      imageUrl: "data:image/svg+xml;base64,PHN2Zy8+",
+    }).success,
+    false,
+  );
+});
+
 test("parses quoted CSV rows and reports row-level validation errors", () => {
   const csv = [
     "marketplace,marketplaceProductId,name,productUrl,category,currentPrice,originalPrice,rating,tags",
@@ -121,4 +139,31 @@ test("legacy seed scores are normalized before product detail rendering", async 
   assert.match(repository, /parsed\.explanation/);
   assert.match(repository, /calculateOpportunityScore\(\{/);
   assert.match(detail, /product\.score\?\.breakdown/);
+});
+
+test("all product surfaces render marketplace images with a fallback", async () => {
+  const [media, dashboard, catalogue, detail] = await Promise.all([
+    readFile(
+      new URL("../components/products/ProductMedia.tsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../app/dashboard/DashboardClient.tsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../app/products/ProductCatalogClient.tsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../app/products/[id]/ProductDetailClient.tsx", import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(media, /onError=\{\(\) => setFailed\(true\)\}/);
+  assert.match(media, /referrerPolicy="no-referrer"/);
+  for (const surface of [dashboard, catalogue, detail]) {
+    assert.match(surface, /<ProductMedia/);
+  }
 });

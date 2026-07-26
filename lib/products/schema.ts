@@ -6,8 +6,20 @@ import {
   STOCK_STATUSES,
 } from "./types.ts";
 
+const webUrl = z.url().refine(
+  (value) => {
+    try {
+      const protocol = new URL(value).protocol;
+      return protocol === "https:" || protocol === "http:";
+    } catch {
+      return false;
+    }
+  },
+  { message: "URL must use HTTP or HTTPS." },
+);
+
 const optionalUrl = z
-  .union([z.url(), z.literal("")])
+  .union([webUrl, z.literal("")])
   .transform((value) => value || null)
   .nullish();
 
@@ -19,7 +31,7 @@ const productInputObjectSchema = z.object({
   marketplaceProductId: z.string().trim().min(2).max(120),
   name: z.string().trim().min(3).max(240),
   description: z.string().trim().max(2_000).nullish(),
-  productUrl: z.url(),
+  productUrl: webUrl,
   affiliateUrl: optionalUrl,
   imageUrl: optionalUrl,
   category: z.string().trim().min(2).max(120),
