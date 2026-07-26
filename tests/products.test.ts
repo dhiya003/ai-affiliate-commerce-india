@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { parseProductCsv } from "../lib/products/csv.ts";
-import { productInputSchema } from "../lib/products/schema.ts";
+import {
+  productInputSchema,
+  productListQuerySchema,
+} from "../lib/products/schema.ts";
 
 const validProduct = {
   marketplace: "Amazon",
@@ -57,6 +60,27 @@ test("parses quoted CSV rows and reports row-level validation errors", () => {
   assert.deepEqual(result.valid[0]?.tags, ["kitchen", "under-500"]);
   assert.equal(result.errors.length, 1);
   assert.equal(result.errors[0]?.row, 3);
+});
+
+test("validates catalogue filters and pagination boundaries", () => {
+  const valid = productListQuerySchema.parse({
+    marketplace: "Meesho",
+    minRating: "4",
+    minPrice: "250",
+    maxPrice: "1000",
+    page: "2",
+    sort: "rating",
+  });
+  assert.equal(valid.page, 2);
+  assert.equal(valid.minRating, 4);
+
+  assert.equal(
+    productListQuerySchema.safeParse({
+      minPrice: "1500",
+      maxPrice: "500",
+    }).success,
+    false,
+  );
 });
 
 test("Sites migration creates durable product tables, indexes, and seed data", async () => {

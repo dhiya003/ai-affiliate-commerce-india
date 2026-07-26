@@ -9,6 +9,7 @@ import {
   ExternalLink,
   LoaderCircle,
   PackageCheck,
+  Pencil,
   RefreshCw,
   Save,
   ShieldCheck,
@@ -22,6 +23,7 @@ import {
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ContentStudio } from "@/components/content/ContentStudio";
+import { ProductEditDialog } from "@/components/products/ProductEditDialog";
 import type { GeneratedContent } from "@/lib/content/schema";
 import type {
   Product,
@@ -92,6 +94,7 @@ export function ProductDetailClient({
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const scoreFactors = useMemo(() => {
     if (!product.score) return [];
@@ -237,6 +240,16 @@ export function ProductDetailClient({
             <p className="truncate text-sm font-semibold">{product.name}</p>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            {canEdit ? (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#d7ddd6] bg-white px-3.5 text-xs font-bold"
+              >
+                <Pencil className="size-3.5" />
+                <span className="hidden sm:inline">Edit</span>
+              </button>
+            ) : null}
             {canEdit ? (
               <button
                 type="button"
@@ -623,6 +636,17 @@ export function ProductDetailClient({
           </aside>
         </div>
       </div>
+
+      <ProductEditDialog
+        open={editing}
+        product={product}
+        onClose={() => setEditing(false)}
+        onSaved={(updated) => {
+          setProduct(updated);
+          setNotes(updated.notes ?? "");
+          setMessage("Product facts updated and score recalculated.");
+        }}
+      />
     </main>
   );
 }

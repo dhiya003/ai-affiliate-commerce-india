@@ -68,20 +68,34 @@ export const productStatusInputSchema = z.object({
   note: z.string().trim().max(500).nullish(),
 });
 
-export const productListQuerySchema = z.object({
-  q: z.string().trim().max(120).optional(),
-  marketplace: z.enum(MARKETPLACES).optional(),
-  category: z.string().trim().max(120).optional(),
-  status: z.enum(PRODUCT_STATUSES).optional(),
-  minRating: z.coerce.number().min(0).max(5).optional(),
-  minPrice: z.coerce.number().min(0).optional(),
-  maxPrice: z.coerce.number().min(0).optional(),
-  sort: z
-    .enum(["score", "newest", "price-asc", "price-desc", "rating"])
-    .default("score"),
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(50).default(12),
-});
+export const productListQuerySchema = z
+  .object({
+    q: z.string().trim().max(120).optional(),
+    marketplace: z.enum(MARKETPLACES).optional(),
+    category: z.string().trim().max(120).optional(),
+    status: z.enum(PRODUCT_STATUSES).optional(),
+    minRating: z.coerce.number().min(0).max(5).optional(),
+    minPrice: z.coerce.number().min(0).optional(),
+    maxPrice: z.coerce.number().min(0).optional(),
+    sort: z
+      .enum(["score", "newest", "price-asc", "price-desc", "rating"])
+      .default("score"),
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(50).default(12),
+  })
+  .superRefine((query, context) => {
+    if (
+      query.minPrice != null &&
+      query.maxPrice != null &&
+      query.maxPrice < query.minPrice
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["maxPrice"],
+        message: "Maximum price cannot be lower than minimum price.",
+      });
+    }
+  });
 
 export const csvImportInputSchema = z.object({
   csv: z.string().min(1).max(1_000_000),

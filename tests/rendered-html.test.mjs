@@ -66,6 +66,12 @@ test("protects the dashboard and renders it for an authenticated user", async ()
   assert.match(html, /opportunity score v1/i);
 });
 
+test("protects the product catalogue", async () => {
+  const anonymous = await render("/products");
+  assert.ok([302, 307, 308].includes(anonymous.status));
+  assert.match(anonymous.headers.get("location") ?? "", /signin-with-chatgpt/);
+});
+
 test("protects product API routes without touching storage", async () => {
   for (const path of ["/api/products", "/api/products/demo/content"]) {
     const response = await render(path);
@@ -94,4 +100,28 @@ test("removes the disposable starter preview and starter assets", async () => {
   assert.doesNotMatch(page, /SkeletonPreview|codex-preview/);
   assert.doesNotMatch(layout, /Starter Project/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
+});
+
+test("ships catalogue filtering, pagination, and product editing controls", async () => {
+  const [catalogue, editor, detail] = await Promise.all([
+    readFile(
+      new URL("../app/products/ProductCatalogClient.tsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../components/products/ProductEditDialog.tsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../app/products/[id]/ProductDetailClient.tsx", import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(catalogue, /Product catalogue/);
+  assert.match(catalogue, /Minimum rating/);
+  assert.match(catalogue, /loadProducts\(result\.pagination\.page \+ 1\)/);
+  assert.match(editor, /method: "PATCH"/);
+  assert.match(editor, /Save changes/);
+  assert.match(detail, /ProductEditDialog/);
 });

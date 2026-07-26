@@ -172,17 +172,17 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
 
         <nav className="mt-9 space-y-1" aria-label="Primary navigation">
           {[
-            [LayoutDashboard, "Today’s picks", true],
-            [ShoppingBag, "All products", false],
-            [WandSparkles, "Content studio", false],
-            [Bookmark, "Saved", false],
-            [BarChart3, "Performance", false],
-          ].map(([Icon, label, active]) => {
+            [LayoutDashboard, "Today’s picks", "/dashboard", true],
+            [ShoppingBag, "All products", "/products", false],
+            [WandSparkles, "Content studio", "/products", false],
+            [Bookmark, "Saved", "#saved", false],
+            [BarChart3, "Performance", "#performance", false],
+          ].map(([Icon, label, href, active]) => {
             const NavIcon = Icon as typeof LayoutDashboard;
             return (
-              <a
+              <Link
                 key={label as string}
-                href="#"
+                href={href as string}
                 aria-current={active ? "page" : undefined}
                 className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition ${
                   active
@@ -197,7 +197,7 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
                     {savedProducts.length}
                   </span>
                 ) : null}
-              </a>
+              </Link>
             );
           })}
         </nav>
