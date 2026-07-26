@@ -51,8 +51,21 @@ rebuilt production container proved:
 - all 28 repository checks passed, including a regression assertion for the
   compatibility path.
 
-Production verification of the corrected Sites release remains required after
-deployment.
+The correction was released as private Sites version 7 from commit
+`68f441577085eceeced5e6f73e2243d2e81328c3`. Production browser QA then proved
+that:
+
+- `/products/amazon-earbuds` renders the complete score breakdown without a
+  Worker exception;
+- the product catalogue and dashboard render all six products;
+- the dashboard refreshes from the live API and agrees with the detail score;
+- the detail, catalogue, and dashboard remain usable at a 390 by 844 mobile
+  viewport; and
+- the post-release error-log query contained no application errors.
+
+The mobile detail page was also visually inspected as a full-page capture.
+Controls, score bars, facts, notes, and history remained within the viewport
+without overlap or horizontal clipping.
 
 ## Dependency security
 
