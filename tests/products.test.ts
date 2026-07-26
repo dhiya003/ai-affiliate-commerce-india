@@ -167,3 +167,20 @@ test("all product surfaces render marketplace images with a fallback", async () 
     assert.match(surface, /<ProductMedia/);
   }
 });
+
+test("catalogue categories come from the complete owner-visible dataset", async () => {
+  const [repository, page, catalogue] = await Promise.all([
+    readFile(new URL("../lib/products/repository.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/products/page.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL("../app/products/ProductCatalogClient.tsx", import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(repository, /SELECT DISTINCT category/);
+  assert.match(repository, /owner_email IS NULL OR owner_email = \?/);
+  assert.match(page, /listProductCategories\(user\.email\)/);
+  assert.match(catalogue, /initialCategories: string\[\]/);
+  assert.match(catalogue, /setCategories\(\(current\)/);
+});

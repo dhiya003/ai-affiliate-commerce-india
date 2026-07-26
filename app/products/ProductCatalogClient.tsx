@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { ProductIntakeDialog } from "@/components/products/ProductIntakeDialog";
 import { ProductMedia } from "@/components/products/ProductMedia";
 import {
@@ -27,6 +27,7 @@ import {
 } from "@/lib/products/types";
 
 interface ProductCatalogClientProps {
+  initialCategories: string[];
   initialResult: ProductListResult;
   userName: string;
 }
@@ -65,6 +66,7 @@ function formatInr(value: number) {
 }
 
 export function ProductCatalogClient({
+  initialCategories,
   initialResult,
   userName,
 }: ProductCatalogClientProps) {
@@ -75,13 +77,7 @@ export function ProductCatalogClient({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [intakeOpen, setIntakeOpen] = useState(false);
 
-  const categories = useMemo(
-    () =>
-      [...new Set(initialResult.products.map((product) => product.category))]
-        .filter(Boolean)
-        .sort(),
-    [initialResult.products],
-  );
+  const [categories, setCategories] = useState(initialCategories);
 
   async function loadProducts(page = 1) {
     setLoading(true);
@@ -417,6 +413,14 @@ export function ProductCatalogClient({
         open={intakeOpen}
         onClose={() => setIntakeOpen(false)}
         onCreated={(created) => {
+          setCategories((current) =>
+            [
+              ...new Set([
+                ...current,
+                ...created.map((product) => product.category),
+              ]),
+            ].sort(),
+          );
           setResult((current) => ({
             products: [...created, ...current.products].slice(0, 12),
             pagination: {

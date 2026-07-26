@@ -232,6 +232,22 @@ export async function listProducts(
   };
 }
 
+export async function listProductCategories(email: string): Promise<string[]> {
+  const result = await (
+    await database()
+  )
+    .prepare(
+      `SELECT DISTINCT category
+       FROM products
+       WHERE owner_email IS NULL OR owner_email = ?
+       ORDER BY category ASC`,
+    )
+    .bind(email)
+    .all<{ category: string }>();
+
+  return result.results.map(({ category }) => category.trim()).filter(Boolean);
+}
+
 export async function getProduct(
   id: string,
   email: string,
