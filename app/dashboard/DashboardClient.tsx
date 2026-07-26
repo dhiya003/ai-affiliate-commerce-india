@@ -100,6 +100,10 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
   const [liveProducts, setLiveProducts] =
     useState<DashboardProduct[]>(products);
   const [marketplace, setMarketplace] = useState("All");
+  const [category, setCategory] = useState("All");
+  const [minimumRating, setMinimumRating] = useState("");
+  const [minimumPrice, setMinimumPrice] = useState("");
+  const [maximumPrice, setMaximumPrice] = useState("");
   const [query, setQuery] = useState("");
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [savedProducts, setSavedProducts] = useState<string[]>([]);
@@ -127,17 +131,49 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
     };
   }, []);
 
+  const categories = useMemo(
+    () =>
+      [...new Set(liveProducts.map((product) => product.category))].sort(
+        (left, right) => left.localeCompare(right),
+      ),
+    [liveProducts],
+  );
+
   const visibleProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
+    const minRating = minimumRating ? Number(minimumRating) : null;
+    const minPrice = minimumPrice ? Number(minimumPrice) : null;
+    const maxPrice = maximumPrice ? Number(maximumPrice) : null;
 
     return liveProducts.filter(
       (product) =>
         (marketplace === "All" || product.marketplace === marketplace) &&
+        (category === "All" || product.category === category) &&
+        (minRating == null || product.rating >= minRating) &&
+        (minPrice == null || product.price >= minPrice) &&
+        (maxPrice == null || product.price <= maxPrice) &&
         (!normalizedQuery ||
           product.name.toLowerCase().includes(normalizedQuery) ||
           product.category.toLowerCase().includes(normalizedQuery)),
     );
-  }, [liveProducts, marketplace, query]);
+  }, [
+    category,
+    liveProducts,
+    marketplace,
+    maximumPrice,
+    minimumPrice,
+    minimumRating,
+    query,
+  ]);
+
+  function clearOpportunityFilters() {
+    setMarketplace("All");
+    setCategory("All");
+    setMinimumRating("");
+    setMinimumPrice("");
+    setMaximumPrice("");
+    setQuery("");
+  }
 
   function toggleSaved(productId: string) {
     setSavedProducts((current) =>
@@ -380,6 +416,60 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
                 </button>
               ))}
             </div>
+            <div className="grid gap-2 rounded-2xl border border-[#dce2db] bg-white p-3 sm:grid-cols-2 xl:grid-cols-[1fr_0.75fr_0.75fr_0.75fr_auto]">
+              <select
+                value={category}
+                onChange={(event) => setCategory(event.target.value)}
+                className="field-control"
+                aria-label="Dashboard category"
+              >
+                <option>All</option>
+                {categories.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+              <select
+                value={minimumRating}
+                onChange={(event) => setMinimumRating(event.target.value)}
+                className="field-control"
+                aria-label="Dashboard minimum rating"
+              >
+                <option value="">Any rating</option>
+                <option value="4">4.0 and above</option>
+                <option value="4.3">4.3 and above</option>
+                <option value="4.5">4.5 and above</option>
+                <option value="4.7">4.7 and above</option>
+              </select>
+              <input
+                type="number"
+                min="0"
+                value={minimumPrice}
+                onChange={(event) => setMinimumPrice(event.target.value)}
+                className="field-control"
+                placeholder="Minimum price"
+                aria-label="Dashboard minimum price"
+              />
+              <input
+                type="number"
+                min="0"
+                value={maximumPrice}
+                onChange={(event) => setMaximumPrice(event.target.value)}
+                className="field-control"
+                placeholder="Maximum price"
+                aria-label="Dashboard maximum price"
+              />
+              <button
+                type="button"
+                onClick={clearOpportunityFilters}
+                className="h-11 rounded-xl border border-[#d6ddd5] px-4 text-xs font-bold text-[#68736b]"
+              >
+                Clear filters
+              </button>
+            </div>
+            <p className="text-xs text-[#78837b]" aria-live="polite">
+              Showing {visibleProducts.length} of {liveProducts.length}{" "}
+              opportunities
+            </p>
             <label className="relative sm:hidden">
               <Search
                 className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[#7a867d]"

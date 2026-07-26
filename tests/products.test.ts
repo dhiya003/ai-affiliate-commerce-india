@@ -184,3 +184,18 @@ test("catalogue categories come from the complete owner-visible dataset", async 
   assert.match(catalogue, /initialCategories: string\[\]/);
   assert.match(catalogue, /setCategories\(\(current\)/);
 });
+
+test("dashboard provides category, rating, and price filters", async () => {
+  const dashboard = await readFile(
+    new URL("../app/dashboard/DashboardClient.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(dashboard, /aria-label="Dashboard category"/);
+  assert.match(dashboard, /aria-label="Dashboard minimum rating"/);
+  assert.match(dashboard, /aria-label="Dashboard minimum price"/);
+  assert.match(dashboard, /aria-label="Dashboard maximum price"/);
+  assert.match(dashboard, /product\.rating >= minRating/);
+  assert.match(dashboard, /product\.price >= minPrice/);
+  assert.match(dashboard, /product\.price <= maxPrice/);
+});
