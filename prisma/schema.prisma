@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum ProductWorkflowStatus {
+  NEW
+  REVIEWED
+  APPROVED
+  REJECTED
+  PROMOTED
+}
+
+enum StockStatus {
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+  UNKNOWN
+}
+
+enum ReturnRisk {
+  LOW
+  MEDIUM
+  HIGH
+  UNKNOWN
+}
+
+enum ContentKind {
+  PRODUCT_SUMMARY
+  PROMOTION_RATIONALE
+  TARGET_AUDIENCE
+  REEL_HOOKS
+  REEL_SCRIPT_30
+  REEL_SCRIPT_60
+  CAPTION
+  HASHTAGS
+  CTA_OPTIONS
+  THUMBNAIL_TEXT
+  PROS
+  CAUTIONS
+  BUNDLE
+}
+
+model User {
+  id              String             @id @default(cuid())
+  email           String             @unique
+  name            String?
+  imageUrl        String?
+  role            UserRole           @default(USER)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  productsCreated Product[]          @relation("ProductCreator")
+  contentsCreated GeneratedContent[]
+  statusChanges   PromotionStatus[]
+
+  @@index([role])
+}
+
+model Marketplace {
+  id             String          @id @default(cuid())
+  name           String          @unique
+  slug           String          @unique
+  baseUrl        String
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  products       Product[]
+  affiliateLinks AffiliateLink[]
+  sellers        Seller[]
+
+  @@index([isActive])
+}
+
+model Seller {
+  id            String      @id @default(cuid())
+  marketplaceId String
+  externalId    String?
+  name          String
+  rating        Decimal?    @db.Decimal(3, 2)
+  isVerified    Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  products      Product[]
+  marketplace   Marketplace @relation(fields: [marketplaceId], references: [id], onDelete: Cascade)
+
+  @@unique([marketplaceId, externalId])
+  @@index([marketplaceId, name])
+}
+
+model ProductCategory {
+  id        String            @id @default(cuid())
+  name      String
+  slug      String            @unique
+  parentId  String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  parent    ProductCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  ProductCategory[] @relation("CategoryTree")
+  products  Product[]
+
+  @@unique([parentId, name])
+  @@index([parentId])
+}
+
+model Product {
+  id                   String                 @id @default(cuid())
+  marketplaceId        String
+  marketplaceProductId String
+  sellerId             String?
+  categoryId           String?
+  createdById          String?
+  name                 String
+  description          String?
+  productUrl           String
+  imageUrl             String?
+  currentPrice         Decimal                @db.Decimal(12, 2)
+  originalPrice        Decimal?               @db.Decimal(12, 2)
+  currency             String                 @default("INR") @db.VarChar(3)
+  rating               Decimal?               @db.Decimal(3, 2)
+  reviewCount          Int                    @default(0)
+  commissionRate       Decimal?               @db.Decimal(5, 2)
+  stockStatus          StockStatus            @default(UNKNOWN)
+  returnRisk           ReturnRisk             @default(UNKNOWN)
+  status               ProductWorkflowStatus  @default(NEW)
+  notes                String?
+  isActive             Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  marketplace          Marketplace            @relation(fields: [marketplaceId], references: [id], onDelete: Restrict)
+  seller               Seller?                @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+  category             ProductCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdBy            User?                  @relation("ProductCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  priceHistory         ProductPriceHistory[]
+  scores               ProductScore[]
+  generatedContent     GeneratedContent[]
+  statusHistory        PromotionStatus[]
+  tags                 ProductTagAssignment[]
+  affiliateLinks       AffiliateLink[]
+
+  @@unique([marketplaceId, marketplaceProductId])
+  @@index([status, isActive])
+  @@index([categoryId, status])
+  @@index([marketplaceId, status])
+  @@index([currentPrice])
+  @@index([rating])
+  @@index([createdAt])
+}
+
+model ProductPriceHistory {
+  id            String   @id @default(cuid())
+  productId     String
+  price         Decimal  @db.Decimal(12, 2)
+  originalPrice Decimal? @db.Decimal(12, 2)
+  currency      String   @default("INR") @db.VarChar(3)
+  inStock       Boolean
+  capturedAt    DateTime @default(now())
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, capturedAt])
+  @@index([productId, capturedAt(sort: Desc)])
+}
+
+model ProductScore {
+  id                       String   @id @default(cuid())
+  productId                String
+  version                  String
+  opportunityScore         Decimal  @db.Decimal(5, 2)
+  ratingScore              Decimal  @db.Decimal(5, 2)
+  reviewVolumeScore        Decimal  @db.Decimal(5, 2)
+  discountScore            Decimal  @db.Decimal(5, 2)
+  commissionScore          Decimal  @db.Decimal(5, 2)
+  priceAttractivenessScore Decimal  @db.Decimal(5, 2)
+  sellerQualityScore       Decimal  @db.Decimal(5, 2)
+  competitionScore         Decimal  @db.Decimal(5, 2)
+  trendScore               Decimal  @db.Decimal(5, 2)
+  demandScore              Decimal  @db.Decimal(5, 2)
+  returnRiskPenalty        Decimal  @db.Decimal(5, 2)
+  commissionEstimate       Decimal? @db.Decimal(12, 2)
+  explanation              Json
+  calculatedAt             DateTime @default(now())
+  product                  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, version, calculatedAt])
+  @@index([opportunityScore(sort: Desc)])
+  @@index([productId, calculatedAt(sort: Desc)])
+}
+
+model GeneratedContent {
+  id              String      @id @default(cuid())
+  productId       String
+  createdById     String
+  kind            ContentKind
+  content         Json
+  promptVersion   String
+  provider        String
+  providerModel   String
+  requestId       String?
+  generationError String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  product         Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdBy       User        @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([productId, createdAt(sort: Desc)])
+  @@index([createdById, createdAt(sort: Desc)])
+  @@index([kind])
+}
+
+model PromotionStatus {
+  id        String                 @id @default(cuid())
+  productId String
+  changedBy String
+  from      ProductWorkflowStatus?
+  to        ProductWorkflowStatus
+  note      String?
+  changedAt DateTime               @default(now())
+  product   Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User                   @relation(fields: [changedBy], references: [id], onDelete: Restrict)
+
+  @@index([productId, changedAt(sort: Desc)])
+  @@index([changedBy, changedAt(sort: Desc)])
+}
+
+model ProductTag {
+  id        String                 @id @default(cuid())
+  name      String
+  slug      String                 @unique
+  createdAt DateTime               @default(now())
+  products  ProductTagAssignment[]
+}
+
+model ProductTagAssignment {
+  productId String
+  tagId     String
+  createdAt DateTime   @default(now())
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag       ProductTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@index([tagId])
+}
+
+model AffiliateLink {
+  id            String      @id @default(cuid())
+  productId     String
+  marketplaceId String
+  url           String
+  label         String?
+  isPrimary     Boolean     @default(false)
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  marketplace   Marketplace @relation(fields: [marketplaceId], references: [id], onDelete: Restrict)
+
+  @@unique([productId, url])
+  @@index([productId, isPrimary])
+  @@index([marketplaceId, isActive])
+}
