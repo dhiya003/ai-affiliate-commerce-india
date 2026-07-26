@@ -21,7 +21,9 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ProductIntakeDialog } from "@/components/products/ProductIntakeDialog";
+import type { Product } from "@/lib/products/types";
 import type { DashboardProduct } from "@/lib/sample-products";
 import { chatGPTSignOutPath } from "../chatgpt-auth";
 
@@ -45,6 +47,45 @@ const accentClasses: Record<string, string> = {
   lime: "from-lime-200 via-emerald-100 to-white text-emerald-800",
 };
 
+const marketplaceAccents: Record<string, string> = {
+  Amazon: "violet",
+  Flipkart: "cyan",
+  Meesho: "amber",
+  Myntra: "rose",
+  AJIO: "blue",
+};
+
+function toDashboardProduct(product: Product): DashboardProduct {
+  const originalPrice = product.originalPrice ?? product.currentPrice;
+  return {
+    id: product.id,
+    name: product.name,
+    marketplace: product.marketplace,
+    category: product.category,
+    price: product.currentPrice,
+    originalPrice,
+    rating: product.rating ?? 0,
+    reviews: product.reviewCount,
+    commissionRate: product.commissionRate ?? 0,
+    sellerRating: product.sellerRating ?? 0,
+    returnRisk: product.returnRisk,
+    trendScore: product.score?.breakdown.trendScore ?? 50,
+    competitionScore: product.score?.breakdown.competitionScore ?? 50,
+    demandScore: product.score?.breakdown.demandScore ?? 50,
+    accent: marketplaceAccents[product.marketplace] ?? "lime",
+    status: product.status,
+    opportunityScore: product.opportunityScore ?? 0,
+    commissionEstimate: product.score?.commissionEstimate ?? 0,
+    discount:
+      originalPrice > product.currentPrice
+        ? Math.round(
+            ((originalPrice - product.currentPrice) / originalPrice) * 100,
+          )
+        : 0,
+    strongestFactors: product.score?.explanation.strongestFactors ?? [],
+  };
+}
+
 function formatInr(value: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -54,22 +95,47 @@ function formatInr(value: number) {
 }
 
 export function DashboardClient({ products, user }: DashboardClientProps) {
+  const [liveProducts, setLiveProducts] =
+    useState<DashboardProduct[]>(products);
   const [marketplace, setMarketplace] = useState("All");
   const [query, setQuery] = useState("");
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [savedProducts, setSavedProducts] = useState<string[]>([]);
+  const [intakeOpen, setIntakeOpen] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    void fetch("/api/products?pageSize=50&sort=score")
+      .then(async (response) => {
+        if (!response.ok) return;
+        const result = (await response.json()) as {
+          data?: { products: Product[] };
+        };
+        if (active && result.data?.products.length) {
+          setLiveProducts(result.data.products.map(toDashboardProduct));
+        }
+      })
+      .catch(() => {
+        // The server-rendered seed set remains a useful offline fallback.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const visibleProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return products.filter(
+    return liveProducts.filter(
       (product) =>
         (marketplace === "All" || product.marketplace === marketplace) &&
         (!normalizedQuery ||
           product.name.toLowerCase().includes(normalizedQuery) ||
           product.category.toLowerCase().includes(normalizedQuery)),
     );
-  }, [marketplace, products, query]);
+  }, [liveProducts, marketplace, query]);
 
   function toggleSaved(productId: string) {
     setSavedProducts((current) =>
@@ -252,6 +318,7 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
             </div>
             <button
               type="button"
+              onClick={() => setIntakeOpen(true)}
               className="inline-flex h-11 items-center justify-center gap-2 self-start rounded-xl bg-[#173f2a] px-4 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(23,63,42,0.18)] hover:bg-[#205536]"
             >
               <PackagePlus className="size-4" aria-hidden="true" />
@@ -263,10 +330,10 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
             {[
               [
                 "Top score",
-                `${products[0]?.opportunityScore ?? 0}`,
+                `${Math.round(liveProducts[0]?.opportunityScore ?? 0)}`,
                 TrendingUp,
               ],
-              ["Opportunities", `${products.length}`, ShoppingBag],
+              ["Opportunities", `${liveProducts.length}`, ShoppingBag],
               ["Avg. commission", "₹79", Sparkles],
               ["Rising today", "18", Flame],
             ].map(([label, value, Icon], index) => {
@@ -443,6 +510,19 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
           )}
         </main>
       </div>
+      <ProductIntakeDialog
+        open={intakeOpen}
+        onClose={() => setIntakeOpen(false)}
+        onCreated={(created) => {
+          setLiveProducts((current) => [
+            ...created.map(toDashboardProduct),
+            ...current.filter(
+              (product) =>
+                !created.some((newProduct) => newProduct.id === product.id),
+            ),
+          ]);
+        }}
+      />
     </div>
   );
 }

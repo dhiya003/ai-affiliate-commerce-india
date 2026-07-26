@@ -1,6 +1,19 @@
 import { ZodError } from "zod";
-import { isPrismaKnownError } from "@/lib/db/client";
 import { apiFailure } from "./response";
+
+type PrismaKnownError = Error & {
+  code: string;
+  meta?: { target?: unknown };
+};
+
+function isPrismaKnownError(error: unknown): error is PrismaKnownError {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    typeof (error as { code?: unknown }).code === "string" &&
+    /^P\d{4}$/.test((error as { code: string }).code)
+  );
+}
 
 export class ApiError extends Error {
   constructor(

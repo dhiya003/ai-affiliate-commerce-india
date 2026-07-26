@@ -34,6 +34,12 @@ a {
   color: #153d28;
 }
 
+@layer components {
+  .field-control {
+    @apply h-11 w-full rounded-xl border border-[#d7ded6] bg-white px-3.5 text-sm text-[#223029] transition outline-none placeholder:text-[#a0a8a2] focus:border-[#4c8b5d] focus:ring-3 focus:ring-[#4c8b5d]/10;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

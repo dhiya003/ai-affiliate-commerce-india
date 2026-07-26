@@ -66,6 +66,19 @@ test("protects the dashboard and renders it for an authenticated user", async ()
   assert.match(html, /opportunity score v1/i);
 });
 
+test("protects product API routes without touching storage", async () => {
+  const response = await render("/api/products");
+  assert.equal(response.status, 401);
+  assert.match(
+    response.headers.get("content-type") ?? "",
+    /^application\/json/,
+  );
+
+  const payload = await response.json();
+  assert.equal(payload.success, false);
+  assert.equal(payload.error.code, "AUTHENTICATION_REQUIRED");
+});
+
 test("removes the disposable starter preview and starter assets", async () => {
   await assert.rejects(access(new URL("app/_sites-preview", templateRoot)));
   await assert.rejects(access(new URL("public/favicon.svg", templateRoot)));

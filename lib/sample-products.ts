@@ -111,9 +111,30 @@ const sourceProducts = [
   },
 ] as const;
 
-export type DashboardProduct = ReturnType<typeof getSampleProducts>[number];
+export interface DashboardProduct {
+  id: string;
+  name: string;
+  marketplace: string;
+  category: string;
+  price: number;
+  originalPrice: number;
+  rating: number;
+  reviews: number;
+  commissionRate: number;
+  sellerRating: number;
+  returnRisk: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
+  trendScore: number;
+  competitionScore: number;
+  demandScore: number;
+  accent: string;
+  status: string;
+  opportunityScore: number;
+  commissionEstimate: number;
+  discount: number;
+  strongestFactors: string[];
+}
 
-export function getSampleProducts() {
+export function getSampleProducts(): DashboardProduct[] {
   return sourceProducts
     .map((product) => {
       const score = calculateOpportunityScore({
