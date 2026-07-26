@@ -26,6 +26,7 @@ external integrations remain unchecked until their production state is proven.
 - [x] Formatting, lint, strict type checks, automated tests, and production build.
 - [x] Containerized edge build, automatic local migrations, health check, and
       disposable core-workflow verification.
+- [x] Prisma migration and idempotent 50-product seed verified on PostgreSQL 16.
 - [x] Production dependency audit reports zero high-severity vulnerabilities.
 - [ ] External error-monitoring destination and alert routing configured.
 

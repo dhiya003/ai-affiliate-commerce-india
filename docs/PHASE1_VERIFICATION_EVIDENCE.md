@@ -75,6 +75,23 @@ without overlap or horizontal clipping.
 - `npm audit --omit=dev --audit-level=high` reports zero production
   vulnerabilities.
 
+## PostgreSQL 16
+
+The production Prisma path was verified against a fresh, isolated PostgreSQL 16
+database on 26 July 2026:
+
+- `prisma migrate deploy` applied the initial migration without drift or manual
+  intervention;
+- the seed created one administrator, five marketplaces, five sellers, eight
+  categories, 50 products, 50 price-history records, and 50 versioned scores;
+- every marketplace contained exactly 10 products;
+- the resulting public schema contained 45 indexes and 16 foreign keys; and
+- a second seed run remained at 50 products, proving the seed is idempotent.
+
+The disposable container, network, and test volume were removed after
+verification. Provisioning the managed production PostgreSQL service and
+setting its pooled and direct connection URLs remain external launch gates.
+
 This evidence covers the reproducible local edge runtime. Browser-specific,
 custom-domain, external-provider, managed-PostgreSQL, and public GitHub release
 checks remain separate launch gates.
