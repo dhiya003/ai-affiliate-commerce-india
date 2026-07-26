@@ -7,7 +7,8 @@ external integrations remain unchecked until their production state is proven.
 ## Product workflow
 
 - [x] ChatGPT sign-in, sign-out, protected pages, and protected APIs.
-- [x] Seeded dashboard across Amazon, Flipkart, Meesho, Myntra, and AJIO.
+- [x] Fifty-product seeded catalogue across Amazon, Flipkart, Meesho, Myntra,
+      and AJIO.
 - [x] Searchable and filterable product catalogue with pagination.
 - [x] Manual creation, CSV import validation, editing, and deletion.
 - [x] New, Reviewed, Approved, Rejected, and Promoted status history.

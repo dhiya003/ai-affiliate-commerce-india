@@ -67,6 +67,28 @@ The mobile detail page was also visually inspected as a full-page capture.
 Controls, score bars, facts, notes, and history remained within the viewport
 without overlap or horizontal clipping.
 
+## Complete production catalogue
+
+Private Sites version 10 was released from commit
+`b8068657c434557fdd3085d268a43c128e3f7006`. Signed-in production QA proved
+that:
+
+- the live D1 migration exposes exactly 50 sample products across five
+  paginated catalogue pages;
+- the catalogue filter contains all seven stored categories, including
+  categories that do not appear on page 1;
+- filtering the later-page Accessories category returns exactly five matching
+  products;
+- product-media containers and missing-image fallbacks render cleanly on the
+  desktop catalogue and mobile detail page;
+- a newly seeded product detail renders its complete score, commission,
+  workflow, facts, notes, and history without clipping at 390 by 844; and
+- the post-release Worker error query contained no application exceptions.
+
+The complete category list is fetched from the owner-visible dataset rather
+than inferred from the current page. New categories created through product
+intake are merged into the filter without requiring a reload.
+
 ## Dependency security
 
 - Next.js was upgraded from 16.2.6 to 16.2.12.
