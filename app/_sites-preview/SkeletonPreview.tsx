@@ -137,7 +137,9 @@ export function SkeletonPreview() {
             Building your site
           </span>
           <h1>Your site is taking shape</h1>
-          <p>Your first version will appear here automatically when it’s ready.</p>
+          <p>
+            Your first version will appear here automatically when it’s ready.
+          </p>
         </section>
       </main>
     </SkeletonTheme>
