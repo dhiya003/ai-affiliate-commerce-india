@@ -24,6 +24,9 @@ external integrations remain unchecked until their production state is proven.
 - [x] CSP, HSTS on HTTPS, content-type, permissions, and referrer headers.
 - [x] Forward-only D1 migrations packaged with the deployed build.
 - [x] Formatting, lint, strict type checks, automated tests, and production build.
+- [x] Containerized edge build, automatic local migrations, health check, and
+      disposable core-workflow verification.
+- [x] Production dependency audit reports zero high-severity vulnerabilities.
 - [ ] External error-monitoring destination and alert routing configured.
 
 ## Production configuration
@@ -45,6 +48,9 @@ external integrations remain unchecked until their production state is proven.
       real promotion.
 - [ ] Owner records release approval with date, tester, and request IDs from any
       defects investigated.
+
+See [Phase 1 verification evidence](PHASE1_VERIFICATION_EVIDENCE.md) for the
+latest automated runtime results.
 
 Do not declare the complete Phase 1 launch finished while any required external
 or manual verification item above remains unchecked.

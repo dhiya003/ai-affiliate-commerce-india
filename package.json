@@ -19,7 +19,8 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:validate": "prisma validate",
-    "db:generate:site": "drizzle-kit generate"
+    "db:generate:site": "drizzle-kit generate",
+    "verify:core": "node scripts/verify-core-workflow.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.1",
@@ -27,7 +28,7 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.27.0",
-    "next": "16.2.6",
+    "next": "16.2.12",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "tailwind-merge": "^3.6.0",
@@ -59,5 +60,10 @@
   "type": "module",
   "prisma": {
     "seed": "tsx prisma/seed.ts"
+  },
+  "overrides": {
+    "effect": "3.20.0",
+    "postcss": "8.5.18",
+    "sharp": "0.35.0"
   }
 }

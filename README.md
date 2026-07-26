@@ -23,6 +23,8 @@ and [Architecture](docs/ARCHITECTURE.md).
 
 Operators should follow [Administrator onboarding](docs/ADMIN_ONBOARDING.md)
 and the evidence-based [Phase 1 launch checklist](docs/PHASE1_LAUNCH_CHECKLIST.md).
+The latest reproducible runtime results are recorded in
+[Phase 1 verification evidence](docs/PHASE1_VERIFICATION_EVIDENCE.md).
 
 ## Technology
 
@@ -61,6 +63,35 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+```
+
+## Containerized edge runtime
+
+The application container runs the same built vinext worker used by Sites,
+applies forward-only D1 migrations, and persists local data in a named volume.
+
+```bash
+docker compose up --build
+```
+
+In another terminal, verify the read-only runtime or the complete disposable
+workflow:
+
+```bash
+npm run verify:core
+ALLOW_VERIFY_MUTATIONS=true npm run verify:core
+```
+
+The mutating verifier creates a uniquely identified temporary product, scores
+it, generates content, moves it through Reviewed, Approved, and Promoted, then
+deletes it in a `finally` cleanup. Run it only against an environment where this
+explicit mutation is acceptable.
+
+To start the optional PostgreSQL 16 development target alongside the edge
+runtime:
+
+```bash
+docker compose --profile postgres up --build
 ```
 
 ## Repository workflow

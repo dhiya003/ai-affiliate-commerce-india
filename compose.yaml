@@ -1,0 +1,33 @@
+services:
+  app:
+    build:
+      context: .
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.6-sol}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - affinity-d1:/data
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-bookworm
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_DB: affinity_india
+      POSTGRES_USER: affinity
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - affinity-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U affinity -d affinity_india"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  affinity-d1:
+  affinity-postgres:
