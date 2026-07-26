@@ -72,5 +72,30 @@ export const productStatusHistory = sqliteTable(
   ],
 );
 
+export const generatedContent = sqliteTable(
+  "generated_content",
+  {
+    id: text("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    createdByEmail: text("created_by_email").notNull(),
+    contentJson: text("content_json").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    provider: text("provider").notNull(),
+    providerModel: text("provider_model").notNull(),
+    requestId: text("request_id"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("generated_content_product_creator_time_idx").on(
+      table.productId,
+      table.createdByEmail,
+      table.createdAt,
+    ),
+  ],
+);
+
 export type ProductRecord = typeof products.$inferSelect;
 export type NewProductRecord = typeof products.$inferInsert;
+export type GeneratedContentRecord = typeof generatedContent.$inferSelect;

@@ -25,9 +25,10 @@ and [Architecture](docs/ARCHITECTURE.md).
 
 - Next.js 16, React 19, and strict TypeScript
 - Tailwind CSS
-- PostgreSQL and Prisma for the application system of record
+- PostgreSQL and Prisma as the production system-of-record architecture
+- D1 and Drizzle for durable storage in the current private Sites release
 - Zod for boundary and environment validation
-- Vitest/testing-library (introduced with the first product features)
+- Node's test runner for domain, migration, authentication, and render checks
 - GitHub Actions for lint, type, test, and build gates
 - Sites-compatible Cloudflare runtime for the web application
 
@@ -43,6 +44,11 @@ npm run dev
 
 The application validates environment variables at startup. Do not commit local
 secrets.
+
+`OPENAI_API_KEY` enables OpenAI structured content generation. Without a key,
+the application uses its conservative built-in launch generator so the complete
+Phase 1 workflow remains testable; saved records identify which provider and
+prompt version produced each bundle.
 
 ## Quality commands
 

@@ -1,0 +1,40 @@
+import type { Product } from "@/lib/products/types";
+
+export const CONTENT_PROMPT_VERSION = "affiliate-bundle-v1.0.0";
+
+export const CONTENT_SYSTEM_INSTRUCTIONS = `
+You are an affiliate content strategist for Indian social-commerce creators.
+Create persuasive but factual content using only the supplied product facts.
+Never invent specifications, guarantees, availability, prices, commissions, or
+performance claims. Treat missing facts as unknown. Write in clear Indian
+English, keep rupee context natural, avoid manipulative urgency, and include a
+plain affiliate disclosure. Return only the requested structured JSON.
+`.trim();
+
+export function buildContentPrompt(product: Product): string {
+  const facts = {
+    name: product.name,
+    marketplace: product.marketplace,
+    category: product.category,
+    description: product.description,
+    currentPriceInr: product.currentPrice,
+    originalPriceInr: product.originalPrice,
+    rating: product.rating,
+    reviewCount: product.reviewCount,
+    commissionRatePercent: product.commissionRate,
+    seller: product.sellerName,
+    sellerRating: product.sellerRating,
+    stockStatus: product.stockStatus,
+    returnRisk: product.returnRisk,
+    tags: product.tags,
+    opportunityScore: product.opportunityScore,
+  };
+
+  return [
+    "Create one complete affiliate-ready content bundle for this product.",
+    "The 30-second script should be about 65–85 words; the 60-second script about 125–165 words.",
+    "Use exactly three distinct reel hooks. Hashtags must start with # and contain no spaces.",
+    "Cautions must be useful purchasing considerations, not invented defects.",
+    `Product facts:\n${JSON.stringify(facts, null, 2)}`,
+  ].join("\n\n");
+}

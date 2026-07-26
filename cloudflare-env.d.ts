@@ -14,5 +14,7 @@ declare namespace Cloudflare {
     ASSETS: Fetcher;
     DB: D1Database;
     IMAGES: AffinityImagesBinding;
+    OPENAI_API_KEY?: string;
+    OPENAI_MODEL?: string;
   }
 }

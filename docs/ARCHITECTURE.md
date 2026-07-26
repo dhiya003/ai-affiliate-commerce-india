@@ -3,9 +3,10 @@
 ## Context
 
 Affinity India is a server-rendered Next.js application with authenticated
-dashboard routes and validated server APIs. PostgreSQL is the system of record.
-The web runtime is stateless; durable data, sessions, and generated content live
-outside individual application instances.
+dashboard routes and validated server APIs. The production data model targets
+PostgreSQL through Prisma. The private Sites release uses an equivalent
+Cloudflare D1 adapter through Drizzle so product and generated-content workflows
+are durable in the deployed environment. The web runtime remains stateless.
 
 ## Phase 1 containers
 
@@ -15,8 +16,11 @@ Browser
        -> Authentication/session service
        -> Validated application services
             -> Prisma -> PostgreSQL
+            -> Drizzle -> D1 (private Sites adapter)
             -> Scoring engine (deterministic)
-            -> AI provider adapter
+            -> Content provider adapter
+                 -> OpenAI Responses API (when configured)
+                 -> Conservative built-in launch generator
        -> Structured logs and error monitoring
 ```
 
@@ -26,9 +30,11 @@ Browser
 - `components/`: reusable UI and product-specific feature components.
 - `lib/api/`: response envelopes, route guards, validation, and error mapping.
 - `lib/auth/`: session, role checks, and access policy.
-- `lib/ai/`: provider-neutral prompts, generation, and response parsing.
+- `lib/content/`: provider-neutral prompts, generation, validation, response
+  parsing, and generated-content persistence.
 - `lib/scoring/`: pure scoring rules, explanations, and version metadata.
-- `lib/db/`: Prisma client, transactions, and database error translation.
+- `db/` and `drizzle/`: current Sites schema and forward-only D1 migrations.
+- `lib/db/`: Prisma client, transactions, and PostgreSQL error translation.
 - `prisma/`: schema, migrations, and seed data.
 - `tests/`: unit, integration, component, and journey tests.
 

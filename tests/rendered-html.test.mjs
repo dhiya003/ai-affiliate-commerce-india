@@ -67,16 +67,18 @@ test("protects the dashboard and renders it for an authenticated user", async ()
 });
 
 test("protects product API routes without touching storage", async () => {
-  const response = await render("/api/products");
-  assert.equal(response.status, 401);
-  assert.match(
-    response.headers.get("content-type") ?? "",
-    /^application\/json/,
-  );
+  for (const path of ["/api/products", "/api/products/demo/content"]) {
+    const response = await render(path);
+    assert.equal(response.status, 401);
+    assert.match(
+      response.headers.get("content-type") ?? "",
+      /^application\/json/,
+    );
 
-  const payload = await response.json();
-  assert.equal(payload.success, false);
-  assert.equal(payload.error.code, "AUTHENTICATION_REQUIRED");
+    const payload = await response.json();
+    assert.equal(payload.success, false);
+    assert.equal(payload.error.code, "AUTHENTICATION_REQUIRED");
+  }
 });
 
 test("removes the disposable starter preview and starter assets", async () => {

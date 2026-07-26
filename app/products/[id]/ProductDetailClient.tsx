@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ContentStudio } from "@/components/content/ContentStudio";
+import type { GeneratedContent } from "@/lib/content/schema";
 import type {
   Product,
   ProductStatus,
@@ -29,6 +31,7 @@ import type {
 import { PRODUCT_STATUSES } from "@/lib/products/types";
 
 interface ProductDetailClientProps {
+  initialGeneratedContent: GeneratedContent | null;
   initialProduct: Product;
   initialStatusHistory: ProductStatusEvent[];
   userEmail: string;
@@ -77,6 +80,7 @@ function dateLabel(value: string) {
 }
 
 export function ProductDetailClient({
+  initialGeneratedContent,
   initialProduct,
   initialStatusHistory,
   userEmail,
@@ -342,6 +346,11 @@ export function ProductDetailClient({
                 </div>
               </div>
             </section>
+
+            <ContentStudio
+              productId={product.id}
+              initialContent={initialGeneratedContent}
+            />
 
             <section className="rounded-3xl border border-[#dce2db] bg-white p-6 sm:p-8">
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">

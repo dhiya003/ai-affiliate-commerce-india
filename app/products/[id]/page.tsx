@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireChatGPTUser } from "@/app/chatgpt-auth";
+import { getLatestContent } from "@/lib/content/repository";
 import { getProduct, getProductStatusHistory } from "@/lib/products/repository";
 import { ProductDetailClient } from "./ProductDetailClient";
 
@@ -22,10 +23,14 @@ async function ProtectedProductDetail({
   const user = await requireChatGPTUser(`/products/${encodeURIComponent(id)}`);
   const product = await getProduct(id, user.email);
   if (!product) notFound();
-  const statusHistory = await getProductStatusHistory(id);
+  const [statusHistory, generatedContent] = await Promise.all([
+    getProductStatusHistory(id),
+    getLatestContent(id, user.email),
+  ]);
 
   return (
     <ProductDetailClient
+      initialGeneratedContent={generatedContent}
       initialProduct={product}
       initialStatusHistory={statusHistory}
       userEmail={user.email}
