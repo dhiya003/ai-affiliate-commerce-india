@@ -113,6 +113,11 @@ live catalogue refresh has accessible loading, fallback, failure, and retry
 states. The complete repository quality gate passes 39 checks, including a
 dedicated regression check for these requirements.
 
+The correction was released as owner-only Sites version 13 from commit
+`15e2fa1cd07edeeea5683906225eefe478891360`. The saved version records that
+exact source provenance, and the production deployment reached the terminal
+`succeeded` state.
+
 ## Error monitoring
 
 The application now includes a provider-neutral operational-error adapter:
