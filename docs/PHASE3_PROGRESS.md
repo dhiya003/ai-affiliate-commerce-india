@@ -60,17 +60,64 @@ runtime evidence.
   lifecycle actions, and unbounded filters.
 - Campaign repository and API tests verify owner-scoped reads and mutations,
   authenticated identity, and server-side validation.
-- The complete repository quality gate passes 79 checks, including formatting,
+- The complete repository quality gate passes 88 checks, including formatting,
   lint, strict type checks, the production build, migration execution, schema
   privacy invariants, and all prior Phase 1 and Phase 2 coverage.
 
+## Measurable affiliate tracking workflow
+
+- [x] Owner-scoped promotion creation links campaign, product, generated
+      content, optional content variation, schedule, publication evidence, and
+      tracked destination.
+- [x] Tracked destinations require HTTPS and the exact product marketplace
+      domain.
+- [x] Public short-link redirect records a click before returning a no-store,
+      no-referrer redirect to the validated marketplace destination.
+- [x] Clicks retain only a daily one-way fingerprint hash; raw connecting IPs
+      are never stored.
+- [x] Mobile, tablet, desktop, other, and unknown device classification.
+- [x] Bounded traffic-source hostname and permitted country-code capture.
+- [x] Bot, 30-minute duplicate, and high-velocity suspicious-click
+      classification.
+- [x] Administrator-only conversion and commission batch import with a
+      250-record limit.
+- [x] External order identifiers are hashed with owner and marketplace context
+      before storage.
+- [x] Re-imported conversions update lifecycle status without duplicating the
+      order, and commission observations are idempotent by conversion, status,
+      and observed time.
+
+## Performance dashboard
+
+- [x] Signed-in performance workspace at `/performance`.
+- [x] Date-range filtering with a default 30-day window.
+- [x] Verified clicks exclude bot and duplicate events.
+- [x] Conversion totals include confirmed, shipped, and delivered orders.
+- [x] Commission totals include approved and paid observations.
+- [x] Conversion rate and earnings per verified click.
+- [x] Daily, marketplace, campaign, and product breakdowns.
+- [x] Pre-aggregated event streams prevent click/conversion joins from
+      multiplying commission totals.
+- [x] Click-through rate remains explicitly unproven until a connected creator
+      platform supplies impression data.
+- [x] Performance navigation from the main dashboard.
+
+## Tracking and performance validation evidence
+
+- Tests cover promotion publication invariants, exact marketplace destination
+  domains, device/bot/referrer classification, privacy-safe redirects, bounded
+  imports, lifecycle states, owner scoping, date ranges, and aggregation shape.
+- The production build contains campaign promotion, public tracked redirect,
+  performance read, attribution import, and signed-in dashboard routes.
+- The complete repository quality gate passes 88 checks.
+
 ## Next Phase 3 slice
 
-The next target is the measurable tracking workflow: promotion creation,
-privacy-safe short-link redirects, bot/duplicate/suspicious click
-classification, conversion and commission imports, and the first performance
-dashboard. The current tables are a verified foundation; they are not evidence
-that live clicks, orders, or commissions have been received.
+The next target is content experimentation and recommendation feedback:
+variation creation, A/B test setup, winner selection, feedback capture, and
+performance-derived learning inputs. The current tracking workflow is
+production-shaped but remains empty until operator-owned campaigns receive
+real traffic and approved attribution imports.
 
 ## Release
 

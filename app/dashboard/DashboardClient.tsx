@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   ArrowUpRight,
   Bell,
   Bookmark,
@@ -271,6 +272,7 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
             [BookOpenCheck, "Policy centre", "/policies", false],
             [Database, "Source operations", "/sources", false],
             [Megaphone, "Campaigns", "/campaigns", false],
+            [Activity, "Performance", "/performance", false],
             [Bookmark, "Saved", "/saved", false],
           ].map(([Icon, label, href, active]) => {
             const NavIcon = Icon as typeof LayoutDashboard;

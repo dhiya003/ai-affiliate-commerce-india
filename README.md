@@ -25,7 +25,8 @@ trend/scoring v2, compliance, evidence-aware recommendations, saved/comparison
 workspaces, and source-health alerts. Partner transports remain disabled until
 approved marketplace access is configured. Phase 3 has begun with the durable
 campaign, promotion, content-variation, click, conversion, and commission
-foundation plus an owner-scoped campaign workspace. See
+foundation, owner-scoped campaign workspace, privacy-safe tracked redirects,
+attribution imports, and a verified performance dashboard. See
 [Phase 2 progress](docs/PHASE2_PROGRESS.md),
 [Phase 2 release audit](docs/PHASE2_RELEASE_AUDIT.md),
 [draft Phase 2 release notes](docs/PHASE2_RELEASE_NOTES.md),
