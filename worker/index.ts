@@ -5,6 +5,7 @@ import {
   DEFAULT_IMAGE_SIZES,
 } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { runDueAutomationJobs } from "../lib/automation/repository";
 
 interface Env {
   ASSETS: Fetcher;
@@ -132,6 +133,27 @@ const worker = {
 
     const response = await handler.fetch(request, env, ctx);
     return finalizeResponse(response, request, startedAt);
+  },
+  async scheduled(
+    controller: { scheduledTime: number },
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<void> {
+    ctx.waitUntil(
+      runDueAutomationJobs(env.DB, new Date(controller.scheduledTime)).then(
+        ({ retries, scheduled }) => {
+          console.info(
+            JSON.stringify({
+              timestamp: new Date().toISOString(),
+              level: "info",
+              event: "automation.scheduler.completed",
+              retryCount: retries.length,
+              scheduledCount: scheduled.length,
+            }),
+          );
+        },
+      ),
+    );
   },
 };
 

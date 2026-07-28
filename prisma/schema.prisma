@@ -235,6 +235,48 @@ enum ScoringWeightStatus {
   ROLLED_BACK
 }
 
+enum AutomationJobType {
+  PRODUCT_INGESTION
+  PRICE_REFRESH
+  AVAILABILITY_REFRESH
+  TREND_REFRESH
+  SCORE_RECALCULATION
+  TOP_10_GENERATION
+  CONTENT_GENERATION
+  COMPLIANCE_CHECK
+  SCORE_RETRAINING
+}
+
+enum AutomationJobStatus {
+  HEALTHY
+  PAUSED
+  RUNNING
+  DEGRADED
+  FAILING
+}
+
+enum AutomationRunTrigger {
+  SCHEDULED
+  MANUAL
+  RETRY
+}
+
+enum AutomationRunStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  TIMED_OUT
+  SKIPPED
+  BLOCKED
+}
+
+enum AutomationLogLevel {
+  INFO
+  WARN
+  ERROR
+}
+
 model User {
   id              String             @id @default(cuid())
   email           String             @unique
@@ -1182,4 +1224,78 @@ model RecommendationQualitySnapshot {
 
   @@unique([ownerEmail, modelVersion, windowFrom, windowTo])
   @@index([ownerEmail, calculatedAt(sort: Desc)])
+}
+
+model AutomationJob {
+  id                  String              @id @default(cuid())
+  jobKey              String              @unique
+  jobType             AutomationJobType
+  name                String
+  description         String
+  cronExpression      String
+  timezone            String              @default("Asia/Kolkata")
+  enabled             Boolean             @default(false)
+  status              AutomationJobStatus @default(PAUSED)
+  timeoutSeconds      Int                 @default(300)
+  maxAttempts         Int                 @default(3)
+  retryBaseSeconds    Int                 @default(60)
+  dependsOnJobId      String?
+  nextRunAt           DateTime?
+  lastRunAt           DateTime?
+  lastSuccessAt       DateTime?
+  lastFailureAt       DateTime?
+  consecutiveFailures Int                 @default(0)
+  createdByEmail      String
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  dependsOnJob        AutomationJob?      @relation("AutomationDependencies", fields: [dependsOnJobId], references: [id], onDelete: SetNull)
+  dependentJobs       AutomationJob[]     @relation("AutomationDependencies")
+  runs                AutomationRun[]
+
+  @@index([enabled, status, nextRunAt])
+  @@index([status, consecutiveFailures])
+}
+
+model AutomationRun {
+  id               String               @id @default(cuid())
+  jobId            String
+  parentRunId      String?
+  triggerType      AutomationRunTrigger
+  status           AutomationRunStatus  @default(QUEUED)
+  attempt          Int                  @default(1)
+  scheduledFor     DateTime?
+  queuedAt         DateTime             @default(now())
+  startedAt        DateTime?
+  completedAt      DateTime?
+  timeoutAt        DateTime?
+  initiatedByEmail String?
+  processedCount   Int                  @default(0)
+  succeededCount   Int                  @default(0)
+  failedCount      Int                  @default(0)
+  metrics          Json                 @default("{}")
+  errorCode        String?
+  errorSummary     String?
+  nextRetryAt      DateTime?
+  job              AutomationJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  parentRun        AutomationRun?       @relation("AutomationRetries", fields: [parentRunId], references: [id], onDelete: SetNull)
+  retryRuns        AutomationRun[]      @relation("AutomationRetries")
+  logs             AutomationRunLog[]
+
+  @@index([jobId, queuedAt(sort: Desc)])
+  @@index([status, nextRetryAt])
+  @@index([parentRunId])
+}
+
+model AutomationRunLog {
+  id         String             @id @default(cuid())
+  runId      String
+  level      AutomationLogLevel
+  event      String
+  message    String
+  metadata   Json               @default("{}")
+  occurredAt DateTime           @default(now())
+  run        AutomationRun      @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, occurredAt])
+  @@index([level, occurredAt(sort: Desc)])
 }

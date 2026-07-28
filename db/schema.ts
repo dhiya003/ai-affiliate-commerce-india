@@ -1149,6 +1149,102 @@ export const recommendationQualitySnapshots = sqliteTable(
   ],
 );
 
+export const automationJobs = sqliteTable(
+  "automation_jobs",
+  {
+    id: text("id").primaryKey(),
+    jobKey: text("job_key").notNull(),
+    jobType: text("job_type").notNull(),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    cronExpression: text("cron_expression").notNull(),
+    timezone: text("timezone").notNull().default("Asia/Kolkata"),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+    status: text("status").notNull().default("PAUSED"),
+    timeoutSeconds: integer("timeout_seconds").notNull().default(300),
+    maxAttempts: integer("max_attempts").notNull().default(3),
+    retryBaseSeconds: integer("retry_base_seconds").notNull().default(60),
+    dependsOnJobKey: text("depends_on_job_key"),
+    nextRunAt: text("next_run_at"),
+    lastRunAt: text("last_run_at"),
+    lastSuccessAt: text("last_success_at"),
+    lastFailureAt: text("last_failure_at"),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    createdByEmail: text("created_by_email").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("automation_jobs_key_unique").on(table.jobKey),
+    index("automation_jobs_due_idx").on(
+      table.enabled,
+      table.status,
+      table.nextRunAt,
+    ),
+    index("automation_jobs_health_idx").on(
+      table.status,
+      table.consecutiveFailures,
+    ),
+  ],
+);
+
+export const automationRuns = sqliteTable(
+  "automation_runs",
+  {
+    id: text("id").primaryKey(),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => automationJobs.id, { onDelete: "cascade" }),
+    parentRunId: text("parent_run_id"),
+    triggerType: text("trigger_type").notNull(),
+    status: text("status").notNull().default("QUEUED"),
+    attempt: integer("attempt").notNull().default(1),
+    scheduledFor: text("scheduled_for"),
+    queuedAt: text("queued_at").notNull(),
+    startedAt: text("started_at"),
+    completedAt: text("completed_at"),
+    timeoutAt: text("timeout_at"),
+    initiatedByEmail: text("initiated_by_email"),
+    processedCount: integer("processed_count").notNull().default(0),
+    succeededCount: integer("succeeded_count").notNull().default(0),
+    failedCount: integer("failed_count").notNull().default(0),
+    metricsJson: text("metrics_json").notNull().default("{}"),
+    errorCode: text("error_code"),
+    errorSummary: text("error_summary"),
+    nextRetryAt: text("next_retry_at"),
+  },
+  (table) => [
+    index("automation_runs_job_time_idx").on(table.jobId, table.queuedAt),
+    index("automation_runs_status_retry_idx").on(
+      table.status,
+      table.nextRetryAt,
+    ),
+    index("automation_runs_parent_idx").on(table.parentRunId),
+  ],
+);
+
+export const automationRunLogs = sqliteTable(
+  "automation_run_logs",
+  {
+    id: text("id").primaryKey(),
+    runId: text("run_id")
+      .notNull()
+      .references(() => automationRuns.id, { onDelete: "cascade" }),
+    level: text("level").notNull(),
+    event: text("event").notNull(),
+    message: text("message").notNull(),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    occurredAt: text("occurred_at").notNull(),
+  },
+  (table) => [
+    index("automation_run_logs_run_time_idx").on(table.runId, table.occurredAt),
+    index("automation_run_logs_level_time_idx").on(
+      table.level,
+      table.occurredAt,
+    ),
+  ],
+);
+
 export type ProductRecord = typeof products.$inferSelect;
 export type NewProductRecord = typeof products.$inferInsert;
 export type GeneratedContentRecord = typeof generatedContent.$inferSelect;

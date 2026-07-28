@@ -97,6 +97,12 @@ test("protects the administrator scoring-governance workspace", async () => {
   assert.match(anonymous.headers.get("location") ?? "", /signin-with-chatgpt/);
 });
 
+test("protects the administrator automation workspace", async () => {
+  const anonymous = await render("/automation");
+  assert.ok([302, 307, 308].includes(anonymous.status));
+  assert.match(anonymous.headers.get("location") ?? "", /signin-with-chatgpt/);
+});
+
 test("protects product API routes without touching storage", async () => {
   for (const path of [
     "/api/products",
@@ -108,6 +114,7 @@ test("protects product API routes without touching storage", async () => {
     "/api/learning",
     "/api/optimization/weights",
     "/api/optimization/quality",
+    "/api/automation/jobs",
   ]) {
     const response = await render(path);
     assert.equal(response.status, 401);
@@ -120,6 +127,19 @@ test("protects product API routes without touching storage", async () => {
     assert.equal(payload.success, false);
     assert.equal(payload.error.code, "AUTHENTICATION_REQUIRED");
   }
+});
+
+test("ships scheduled-job health, policy, rerun, and log controls", async () => {
+  const workspace = await readFile(
+    new URL("../app/automation/AutomationClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(workspace, /Scheduled automation/);
+  assert.match(workspace, /Enabled jobs/);
+  assert.match(workspace, /Run now/);
+  assert.match(workspace, /Job policy/);
+  assert.match(workspace, /Processing log/);
+  assert.match(workspace, /deliberately gated/);
 });
 
 test("ships versioned scoring governance and quality controls", async () => {

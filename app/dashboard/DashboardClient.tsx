@@ -25,6 +25,7 @@ import {
   Star,
   TrendingUp,
   WandSparkles,
+  Workflow,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -277,6 +278,7 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
             [Activity, "Performance", "/performance", false],
             [FlaskConical, "Experiments", "/experiments", false],
             [SlidersHorizontal, "Scoring governance", "/optimization", false],
+            [Workflow, "Automation", "/automation", false],
             [Bookmark, "Saved", "/saved", false],
           ].map(([Icon, label, href, active]) => {
             const NavIcon = Icon as typeof LayoutDashboard;

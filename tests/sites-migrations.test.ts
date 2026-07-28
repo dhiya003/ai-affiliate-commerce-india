@@ -333,3 +333,75 @@ test("Sites migrations create the Phase 3 experiment and learning foundation", a
     database.close();
   }
 });
+
+test("Sites migrations create paused and observable Phase 3 automation jobs", async () => {
+  const migrationNames = [
+    "0000_real_pandemic.sql",
+    "0001_tiresome_kitty_pryde.sql",
+    "0002_seed_phase1_catalog.sql",
+    "0003_freezing_titanium_man.sql",
+    "0004_seed_phase2_policies.sql",
+    "0005_abandoned_energizer.sql",
+    "0006_seed_phase2_ingestion_sources.sql",
+    "0007_worried_doctor_spectrum.sql",
+    "0008_lying_the_fury.sql",
+    "0009_giant_sebastian_shaw.sql",
+    "0010_seed_phase2_partner_adapters.sql",
+    "0011_phase3_campaign_tracking_foundation.sql",
+    "0012_phase3_experiment_learning_foundation.sql",
+    "0013_phase3_automation_control_plane.sql",
+  ];
+  const migrations = await Promise.all(
+    migrationNames.map((name) =>
+      readFile(new URL(`../drizzle/${name}`, import.meta.url), "utf8"),
+    ),
+  );
+  const database = new DatabaseSync(":memory:");
+  try {
+    database.exec("PRAGMA foreign_keys = ON;");
+    for (const migration of migrations) database.exec(migration);
+
+    const tables = database
+      .prepare(
+        `SELECT COUNT(*) AS count FROM sqlite_master
+         WHERE type = 'table'
+           AND name IN (
+             'automation_jobs', 'automation_runs', 'automation_run_logs'
+           )`,
+      )
+      .get() as { count: number };
+    assert.equal(tables.count, 3);
+
+    const jobs = database
+      .prepare(
+        `SELECT job_type, enabled, status, depends_on_job_key
+         FROM automation_jobs ORDER BY job_key`,
+      )
+      .all() as Array<{
+      job_type: string;
+      enabled: number;
+      status: string;
+      depends_on_job_key: string | null;
+    }>;
+    assert.equal(jobs.length, 9);
+    assert.ok(jobs.every(({ enabled }) => enabled === 0));
+    assert.ok(jobs.every(({ status }) => status === "PAUSED"));
+    assert.ok(jobs.some(({ job_type }) => job_type === "SCORE_RETRAINING"));
+    assert.ok(
+      jobs.filter(({ depends_on_job_key }) => depends_on_job_key).length >= 7,
+    );
+
+    assert.equal(
+      database.prepare("PRAGMA foreign_key_list('automation_runs')").all()
+        .length,
+      1,
+    );
+    assert.equal(
+      database.prepare("PRAGMA foreign_key_list('automation_run_logs')").all()
+        .length,
+      1,
+    );
+  } finally {
+    database.close();
+  }
+});

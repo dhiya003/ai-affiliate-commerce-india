@@ -63,7 +63,7 @@ runtime evidence.
   lifecycle actions, and unbounded filters.
 - Campaign repository and API tests verify owner-scoped reads and mutations,
   authenticated identity, and server-side validation.
-- The complete repository quality gate passes 107 checks, including formatting,
+- The complete repository quality gate passes 117 checks, including formatting,
   lint, strict type checks, the production build, migration execution, schema
   privacy invariants, and all prior Phase 1 and Phase 2 coverage.
 
@@ -112,7 +112,7 @@ runtime evidence.
   imports, lifecycle states, owner scoping, date ranges, and aggregation shape.
 - The production build contains campaign promotion, public tracked redirect,
   performance read, attribution import, and signed-in dashboard routes.
-- The complete repository quality gate passes 107 checks.
+- The complete repository quality gate passes 117 checks.
 
 ## Content experiments and learning
 
@@ -154,7 +154,7 @@ proven without conversion evidence.
   administrator-only refresh.
 - The production build includes all four experiment/learning APIs and the
   signed-in workspace.
-- The complete repository quality gate passes 107 checks.
+- The complete repository quality gate passes 117 checks.
 
 ## Governed scoring optimization
 
@@ -191,13 +191,62 @@ separate explicit action.
   degradation, and rollback gates.
 - The production build includes the administrator workspace and all three
   scoring-governance API routes.
-- The complete repository quality gate passes 107 checks.
+- The complete repository quality gate passes 117 checks.
+
+## Scheduled automation control plane
+
+- [x] Durable automation-job, run, retry-lineage, and bounded processing-log
+      models in D1 and PostgreSQL.
+- [x] Nine seeded schedules for product ingestion, price refresh, availability
+      refresh, trend refresh, score recalculation, top-10 generation, content
+      generation, compliance checks, and governed score retraining.
+- [x] Every seeded schedule starts paused; deployment cannot start external work
+      implicitly.
+- [x] Fifteen-minute Worker scheduler dispatches due jobs and due retries.
+- [x] Daily and weekly UTC cron validation with deterministic next-run
+      calculation.
+- [x] Upstream dependency health blocks downstream execution.
+- [x] Per-job timeout, bounded attempt count, and exponential retry policy.
+- [x] Healthy, paused, running, degraded, and failing job-health states.
+- [x] Queued, running, succeeded, failed, timed-out, skipped, and blocked run
+      states.
+- [x] Manual administrator reruns retain initiator identity.
+- [x] Bounded operational logs contain event names and metrics without request
+      bodies or credentials.
+- [x] Top-10 generation executes against current ranked products and retains the
+      chosen product IDs in run metrics.
+- [x] Scheduled score retraining refreshes owner learning profiles and active
+      version quality snapshots but cannot activate a scoring version.
+- [x] Administrator dashboard at `/automation` exposes health, policy controls,
+      manual reruns, latest outcomes, and processing logs.
+
+Partner-dependent ingestion, price, stock, trend, content, and compliance job
+handlers return `SKIPPED` with `HANDLER_NOT_CONFIGURED` until their corresponding
+credentialed transports are proven. A skipped run is never counted as a
+success. Those schedules remain paused by default.
+
+## Automation validation evidence
+
+- The forward-only D1 migration creates three automation tables, eight indexes,
+  the expected run/log foreign keys, and nine paused jobs after every earlier
+  migration.
+- A disposable PostgreSQL 16 database applied all nine repository migrations;
+  it contained nine paused jobs and the 50-product seed remained idempotent
+  across two runs.
+- Tests cover cron bounds, deterministic next times, job policy limits,
+  dependency blocking, exponential retries, timeouts, explicit skips,
+  retraining safety, administrator authorization, Worker scheduler dispatch,
+  migration execution, route protection, and dashboard controls.
+- The production build includes the scheduled Worker entry point, four
+  automation APIs, and the administrator dashboard.
+- The complete repository quality gate passes 117 checks.
 
 ## Next Phase 3 slice
 
-The next target is the scheduled automation control plane: score retraining,
-daily ingestion and refresh orchestration, dependency-aware execution, retry
-and timeout policy, health monitoring, processing logs, and manual reruns.
+The next target is user notifications and reports: in-app delivery, preferences,
+read state, daily/weekly/monthly summaries, operational and performance alerts,
+email-provider handoff, and report downloads. Credential-dependent automation
+handlers remain an explicit integration gate in parallel.
 
 ## Release
 
