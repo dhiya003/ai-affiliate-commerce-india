@@ -124,6 +124,15 @@ including formatting, lint, strict type checking, the production build, and all
 automated tests. Configuring a production destination and alert routing remains
 an external launch gate.
 
+The adapter and improved dashboard empty-state guidance were released as
+private Sites version 12 from commit
+`49a6c631b852d5ad9dd89d65e911e8077e992e4a`. Signed-in production verification
+confirmed that the dashboard loads all 50 opportunities and exposes every
+category, rating, and price control. The post-release Worker error query
+returned no events. Sites currently has no external runtime variables, so
+structured Worker logs are the active monitoring fallback until a webhook
+destination and token are supplied.
+
 ## Dependency security
 
 - Next.js was upgraded from 16.2.6 to 16.2.12.
