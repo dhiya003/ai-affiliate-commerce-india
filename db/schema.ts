@@ -96,6 +96,140 @@ export const generatedContent = sqliteTable(
   ],
 );
 
+const policyColumns = {
+  id: text("id").primaryKey(),
+  marketplace: text("marketplace").notNull(),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  effectiveAt: text("effective_at").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  status: text("status").notNull().default("NEEDS_REVIEW"),
+  reviewedAt: text("reviewed_at"),
+  reviewedByEmail: text("reviewed_by_email"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+};
+
+export const marketplaceRules = sqliteTable(
+  "marketplace_rules",
+  {
+    ...policyColumns,
+    ruleType: text("rule_type").notNull(),
+  },
+  (table) => [
+    uniqueIndex("marketplace_rules_marketplace_title_unique").on(
+      table.marketplace,
+      table.title,
+    ),
+    index("marketplace_rules_status_effective_idx").on(
+      table.status,
+      table.effectiveAt,
+    ),
+  ],
+);
+
+export const commissionRules = sqliteTable(
+  "commission_rules",
+  {
+    ...policyColumns,
+    category: text("category").notNull(),
+    rateMin: real("rate_min"),
+    rateMax: real("rate_max"),
+  },
+  (table) => [
+    uniqueIndex("commission_rules_marketplace_category_effective_unique").on(
+      table.marketplace,
+      table.category,
+      table.effectiveAt,
+    ),
+    index("commission_rules_status_effective_idx").on(
+      table.status,
+      table.effectiveAt,
+    ),
+  ],
+);
+
+export const contentPolicies = sqliteTable(
+  "content_policies",
+  {
+    ...policyColumns,
+    channel: text("channel").notNull(),
+  },
+  (table) => [
+    uniqueIndex("content_policies_marketplace_title_unique").on(
+      table.marketplace,
+      table.title,
+    ),
+    index("content_policies_status_effective_idx").on(
+      table.status,
+      table.effectiveAt,
+    ),
+  ],
+);
+
+export const affiliateDisclosures = sqliteTable(
+  "affiliate_disclosures",
+  {
+    ...policyColumns,
+    disclosureText: text("disclosure_text").notNull(),
+    placement: text("placement").notNull(),
+  },
+  (table) => [
+    uniqueIndex("affiliate_disclosures_marketplace_title_unique").on(
+      table.marketplace,
+      table.title,
+    ),
+    index("affiliate_disclosures_status_effective_idx").on(
+      table.status,
+      table.effectiveAt,
+    ),
+  ],
+);
+
+export const prohibitedPractices = sqliteTable(
+  "prohibited_practices",
+  {
+    ...policyColumns,
+    severity: text("severity").notNull().default("HIGH"),
+  },
+  (table) => [
+    uniqueIndex("prohibited_practices_marketplace_title_unique").on(
+      table.marketplace,
+      table.title,
+    ),
+    index("prohibited_practices_status_effective_idx").on(
+      table.status,
+      table.effectiveAt,
+    ),
+  ],
+);
+
+export const platformUpdateHistory = sqliteTable(
+  "platform_update_history",
+  {
+    id: text("id").primaryKey(),
+    marketplace: text("marketplace").notNull(),
+    policyKind: text("policy_kind").notNull(),
+    policyId: text("policy_id"),
+    changeType: text("change_type").notNull(),
+    previousStatus: text("previous_status"),
+    nextStatus: text("next_status"),
+    summary: text("summary").notNull(),
+    sourceUrl: text("source_url").notNull(),
+    detectedAt: text("detected_at").notNull(),
+    reviewedAt: text("reviewed_at"),
+    reviewedByEmail: text("reviewed_by_email"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("platform_update_marketplace_detected_idx").on(
+      table.marketplace,
+      table.detectedAt,
+    ),
+    index("platform_update_policy_idx").on(table.policyKind, table.policyId),
+  ],
+);
+
 export type ProductRecord = typeof products.$inferSelect;
 export type NewProductRecord = typeof products.$inferInsert;
 export type GeneratedContentRecord = typeof generatedContent.$inferSelect;

@@ -22,6 +22,10 @@ Browser
                  -> OpenAI Responses API (when configured)
                  -> Conservative built-in launch generator
        -> Structured logs and error monitoring
+       -> Policy knowledge service
+            -> Dated marketplace rules and commission schedules
+            -> Content, disclosure, and prohibited-practice records
+            -> Administrator review history
 ```
 
 ## Application boundaries
@@ -33,6 +37,8 @@ Browser
 - `lib/content/`: provider-neutral prompts, generation, validation, response
   parsing, and generated-content persistence.
 - `lib/scoring/`: pure scoring rules, explanations, and version metadata.
+- `lib/policies/`: source-backed policy queries, review-state transitions, and
+  append-only update-history recording.
 - `lib/observability/`: redacted structured logging and isolated operational
   error delivery.
 - `db/` and `drizzle/`: current Sites schema and forward-only D1 migrations.
@@ -82,5 +88,8 @@ step before traffic shifts to a new application version.
 ## Phase evolution
 
 Phase 2 adds marketplace adapters, raw-source retention, trend signals, rules,
-and compliance checks behind stable interfaces. Phase 3 adds event ingestion,
-campaign analytics, background queues, learning feedback, and scheduled jobs.
+and compliance checks behind stable interfaces. Its first deployed slice uses
+six explicit policy models, effective dates, primary-source URLs, review
+statuses, and administrator-attributed state changes. Phase 3 adds event
+ingestion, campaign analytics, background queues, learning feedback, and
+scheduled jobs.

@@ -7,7 +7,8 @@ was promoted.
 
 ## Product status
 
-Phase 1 is under active development. The locked first release covers:
+Phase 1 is live privately while its external launch gates remain under active
+configuration. The locked first release covers:
 
 - secure sign-in and role-aware access;
 - a responsive dashboard of today's best product opportunities;
@@ -18,7 +19,9 @@ Phase 1 is under active development. The locked first release covers:
 - a production deployment with automated quality checks.
 
 Live marketplace ingestion, policy intelligence, tracking, and optimization are
-intentionally reserved for Phases 2 and 3. See [Product scope](docs/PRODUCT.md)
+delivered incrementally in Phases 2 and 3. Phase 2 has begun with a durable,
+source-backed marketplace policy centre and administrator review workflow. See
+[Phase 2 progress](docs/PHASE2_PROGRESS.md), [Product scope](docs/PRODUCT.md),
 and [Architecture](docs/ARCHITECTURE.md).
 
 Operators should follow [Administrator onboarding](docs/ADMIN_ONBOARDING.md)

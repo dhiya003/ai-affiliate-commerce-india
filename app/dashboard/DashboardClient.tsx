@@ -2,9 +2,9 @@
 
 import {
   ArrowUpRight,
-  BarChart3,
   Bell,
   Bookmark,
+  BookOpenCheck,
   ChevronDown,
   CircleAlert,
   CircleHelp,
@@ -266,8 +266,8 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
             [LayoutDashboard, "Today’s picks", "/dashboard", true],
             [ShoppingBag, "All products", "/products", false],
             [WandSparkles, "Content studio", "/products", false],
+            [BookOpenCheck, "Policy centre", "/policies", false],
             [Bookmark, "Saved", "#saved", false],
-            [BarChart3, "Performance", "#performance", false],
           ].map(([Icon, label, href, active]) => {
             const NavIcon = Icon as typeof LayoutDashboard;
             return (

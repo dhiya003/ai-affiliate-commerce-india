@@ -51,6 +51,20 @@ enum ContentKind {
   BUNDLE
 }
 
+enum PolicyStatus {
+  DRAFT
+  ACTIVE
+  NEEDS_REVIEW
+  RETIRED
+}
+
+enum PolicySeverity {
+  LOW
+  MEDIUM
+  HIGH
+  BLOCKING
+}
+
 model User {
   id              String             @id @default(cuid())
   email           String             @unique
@@ -67,16 +81,22 @@ model User {
 }
 
 model Marketplace {
-  id             String          @id @default(cuid())
-  name           String          @unique
-  slug           String          @unique
-  baseUrl        String
-  isActive       Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  products       Product[]
-  affiliateLinks AffiliateLink[]
-  sellers        Seller[]
+  id                   String                  @id @default(cuid())
+  name                 String                  @unique
+  slug                 String                  @unique
+  baseUrl              String
+  isActive             Boolean                 @default(true)
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  products             Product[]
+  affiliateLinks       AffiliateLink[]
+  sellers              Seller[]
+  rules                MarketplaceRule[]
+  commissionRules      CommissionRule[]
+  contentPolicies      ContentPolicy[]
+  affiliateDisclosures AffiliateDisclosure[]
+  prohibitedPractices  ProhibitedPractice[]
+  updateHistory        PlatformUpdateHistory[]
 
   @@index([isActive])
 }
@@ -266,4 +286,122 @@ model AffiliateLink {
   @@unique([productId, url])
   @@index([productId, isPrimary])
   @@index([marketplaceId, isActive])
+}
+
+model MarketplaceRule {
+  id              String       @id @default(cuid())
+  marketplaceId   String
+  title           String
+  summary         String
+  ruleType        String
+  effectiveAt     DateTime
+  sourceUrl       String
+  status          PolicyStatus @default(NEEDS_REVIEW)
+  reviewedAt      DateTime?
+  reviewedByEmail String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  marketplace     Marketplace  @relation(fields: [marketplaceId], references: [id], onDelete: Cascade)
+
+  @@unique([marketplaceId, title])
+  @@index([status, effectiveAt(sort: Desc)])
+}
+
+model CommissionRule {
+  id              String       @id @default(cuid())
+  marketplaceId   String
+  title           String
+  summary         String
+  category        String
+  rateMin         Decimal?     @db.Decimal(6, 2)
+  rateMax         Decimal?     @db.Decimal(6, 2)
+  effectiveAt     DateTime
+  sourceUrl       String
+  status          PolicyStatus @default(NEEDS_REVIEW)
+  reviewedAt      DateTime?
+  reviewedByEmail String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  marketplace     Marketplace  @relation(fields: [marketplaceId], references: [id], onDelete: Cascade)
+
+  @@unique([marketplaceId, category, effectiveAt])
+  @@index([status, effectiveAt(sort: Desc)])
+}
+
+model ContentPolicy {
+  id              String       @id @default(cuid())
+  marketplaceId   String
+  title           String
+  summary         String
+  channel         String
+  effectiveAt     DateTime
+  sourceUrl       String
+  status          PolicyStatus @default(NEEDS_REVIEW)
+  reviewedAt      DateTime?
+  reviewedByEmail String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  marketplace     Marketplace  @relation(fields: [marketplaceId], references: [id], onDelete: Cascade)
+
+  @@unique([marketplaceId, title])
+  @@index([status, effectiveAt(sort: Desc)])
+}
+
+model AffiliateDisclosure {
+  id              String       @id @default(cuid())
+  marketplaceId   String
+  title           String
+  summary         String
+  disclosureText  String
+  placement       String
+  effectiveAt     DateTime
+  sourceUrl       String
+  status          PolicyStatus @default(NEEDS_REVIEW)
+  reviewedAt      DateTime?
+  reviewedByEmail String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  marketplace     Marketplace  @relation(fields: [marketplaceId], references: [id], onDelete: Cascade)
+
+  @@unique([marketplaceId, title])
+  @@index([status, effectiveAt(sort: Desc)])
+}
+
+model ProhibitedPractice {
+  id              String         @id @default(cuid())
+  marketplaceId   String
+  title           String
+  summary         String
+  severity        PolicySeverity @default(HIGH)
+  effectiveAt     DateTime
+  sourceUrl       String
+  status          PolicyStatus   @default(NEEDS_REVIEW)
+  reviewedAt      DateTime?
+  reviewedByEmail String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  marketplace     Marketplace    @relation(fields: [marketplaceId], references: [id], onDelete: Cascade)
+
+  @@unique([marketplaceId, title])
+  @@index([status, effectiveAt(sort: Desc)])
+}
+
+model PlatformUpdateHistory {
+  id              String        @id @default(cuid())
+  marketplaceId   String
+  policyKind      String
+  policyId        String?
+  changeType      String
+  previousStatus  PolicyStatus?
+  nextStatus      PolicyStatus?
+  summary         String
+  sourceUrl       String
+  detectedAt      DateTime
+  reviewedAt      DateTime?
+  reviewedByEmail String?
+  createdAt       DateTime      @default(now())
+  marketplace     Marketplace   @relation(fields: [marketplaceId], references: [id], onDelete: Cascade)
+
+  @@index([marketplaceId, detectedAt(sort: Desc)])
+  @@index([policyKind, policyId])
 }

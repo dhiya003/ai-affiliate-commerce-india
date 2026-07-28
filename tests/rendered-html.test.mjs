@@ -79,8 +79,18 @@ test("protects the product catalogue", async () => {
   assert.match(anonymous.headers.get("location") ?? "", /signin-with-chatgpt/);
 });
 
+test("protects the Phase 2 policy centre", async () => {
+  const anonymous = await render("/policies");
+  assert.ok([302, 307, 308].includes(anonymous.status));
+  assert.match(anonymous.headers.get("location") ?? "", /signin-with-chatgpt/);
+});
+
 test("protects product API routes without touching storage", async () => {
-  for (const path of ["/api/products", "/api/products/demo/content"]) {
+  for (const path of [
+    "/api/products",
+    "/api/products/demo/content",
+    "/api/policies",
+  ]) {
     const response = await render(path);
     assert.equal(response.status, 401);
     assert.match(
