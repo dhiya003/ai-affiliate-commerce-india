@@ -26,6 +26,7 @@ workspaces, and source-health alerts. Partner transports remain disabled until
 approved marketplace access is configured. See
 [Phase 2 progress](docs/PHASE2_PROGRESS.md),
 [Phase 2 release audit](docs/PHASE2_RELEASE_AUDIT.md),
+[draft Phase 2 release notes](docs/PHASE2_RELEASE_NOTES.md),
 [Product scope](docs/PRODUCT.md), and [Architecture](docs/ARCHITECTURE.md).
 
 Operators should follow [Administrator onboarding](docs/ADMIN_ONBOARDING.md)
