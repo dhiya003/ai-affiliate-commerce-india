@@ -11,6 +11,7 @@ import {
   manualIngestionSchema,
   sourceRecordSchema,
 } from "../lib/ingestion/schema.ts";
+import { assessSourceHealth } from "../lib/ingestion/health.ts";
 
 const record = {
   marketplaceProductId: "AMZ-001",
@@ -89,4 +90,76 @@ test("freshness uses each source window", () => {
 test("retry backoff is exponential and capped at six hours", () => {
   assert.deepEqual([1, 2, 3, 4].map(retryDelayMinutes), [5, 10, 20, 40]);
   assert.equal(retryDelayMinutes(20), 360);
+});
+
+test("source freshness distinguishes fresh, aging, stale, and never synced", () => {
+  const now = new Date("2026-07-29T12:00:00.000Z");
+  const base = {
+    status: "READY" as const,
+    freshnessWindowMinutes: 120,
+    consecutiveFailures: 0,
+    rateLimitedUntil: null,
+  };
+
+  assert.equal(
+    assessSourceHealth(
+      { ...base, lastSuccessAt: "2026-07-29T11:00:00.000Z" },
+      now,
+    ).freshness.status,
+    "FRESH",
+  );
+  assert.equal(
+    assessSourceHealth(
+      { ...base, lastSuccessAt: "2026-07-29T10:20:00.000Z" },
+      now,
+    ).freshness.status,
+    "AGING",
+  );
+  assert.equal(
+    assessSourceHealth(
+      { ...base, lastSuccessAt: "2026-07-29T09:00:00.000Z" },
+      now,
+    ).freshness.status,
+    "STALE",
+  );
+  assert.equal(
+    assessSourceHealth({ ...base, lastSuccessAt: null }, now).freshness.status,
+    "NEVER_SYNCED",
+  );
+});
+
+test("source health alerts escalate failures and ignore disabled adapters", () => {
+  const now = new Date("2026-07-29T12:00:00.000Z");
+  const critical = assessSourceHealth(
+    {
+      status: "DEGRADED",
+      freshnessWindowMinutes: 60,
+      lastSuccessAt: "2026-07-29T08:00:00.000Z",
+      consecutiveFailures: 3,
+      rateLimitedUntil: "2026-07-29T13:00:00.000Z",
+    },
+    now,
+  );
+  assert.equal(critical.health, "DEGRADED");
+  assert.deepEqual(
+    critical.alerts.map(({ code, severity }) => [code, severity]),
+    [
+      ["SOURCE_STALE", "CRITICAL"],
+      ["SOURCE_FAILURES", "CRITICAL"],
+      ["SOURCE_RATE_LIMITED", "WARNING"],
+    ],
+  );
+
+  const disabled = assessSourceHealth(
+    {
+      status: "DISABLED",
+      freshnessWindowMinutes: 60,
+      lastSuccessAt: null,
+      consecutiveFailures: 0,
+      rateLimitedUntil: null,
+    },
+    now,
+  );
+  assert.equal(disabled.health, "DISABLED");
+  assert.deepEqual(disabled.alerts, []);
 });

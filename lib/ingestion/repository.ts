@@ -1,5 +1,6 @@
 import { ApiError } from "@/lib/api/errors";
 import { calculateOpportunityScore } from "@/lib/scoring";
+import { assessSourceHealth } from "./health.ts";
 import {
   canonicalProductKey,
   isSourceRecordStale,
@@ -602,7 +603,7 @@ export async function listSourceHealth(): Promise<SourceHealth[]> {
        FROM product_sources ORDER BY marketplace, name`,
     )
     .all<SourceRow>();
-  const now = Date.now();
+  const now = new Date();
 
   return Promise.all(
     sources.results.map(async (source) => {
@@ -616,20 +617,16 @@ export async function listSourceHealth(): Promise<SourceHealth[]> {
         )
         .bind(source.id)
         .first<RunRow>();
-      const stale =
-        !source.last_success_at ||
-        now - new Date(source.last_success_at).getTime() >
-          source.freshness_window_minutes * 60_000;
-      const health: SourceHealth["health"] =
-        source.status === "DISABLED"
-          ? "DISABLED"
-          : source.status === "DEGRADED" ||
-              source.status === "RATE_LIMITED" ||
-              source.consecutive_failures > 0
-            ? "DEGRADED"
-            : stale
-              ? "STALE"
-              : "HEALTHY";
+      const assessment = assessSourceHealth(
+        {
+          status: source.status,
+          freshnessWindowMinutes: source.freshness_window_minutes,
+          lastSuccessAt: source.last_success_at,
+          consecutiveFailures: source.consecutive_failures,
+          rateLimitedUntil: source.rate_limited_until,
+        },
+        now,
+      );
 
       return {
         id: source.id,
@@ -643,7 +640,9 @@ export async function listSourceHealth(): Promise<SourceHealth[]> {
         lastErrorAt: source.last_error_at,
         consecutiveFailures: source.consecutive_failures,
         rateLimitedUntil: source.rate_limited_until,
-        health,
+        health: assessment.health,
+        freshness: assessment.freshness,
+        alerts: assessment.alerts,
         latestRun: latest
           ? {
               id: latest.id,

@@ -9,6 +9,7 @@ import {
 } from "@/lib/ingestion/repository";
 import { manualIngestionSchema } from "@/lib/ingestion/schema";
 import { ingestManualProducts } from "@/lib/ingestion/service";
+import { captureOperationalError } from "@/lib/observability/monitoring-runtime";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,18 @@ export async function GET() {
       listSourceHealth(),
       getIngestionStatistics(),
     ]);
+    for (const source of sources) {
+      for (const alert of source.alerts) {
+        if (alert.severity !== "CRITICAL") continue;
+        captureOperationalError({
+          event: "ingestion.source.health.critical",
+          requestId,
+          code: alert.code,
+          errorType: "SourceHealthAlert",
+          status: 503,
+        });
+      }
+    }
     return apiSuccess({ sources, statistics }, { requestId });
   } catch (error) {
     return handleApiError(error, requestId);

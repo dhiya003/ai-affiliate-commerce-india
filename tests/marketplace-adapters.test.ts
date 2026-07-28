@@ -204,3 +204,37 @@ test("adapters reject availability that conflicts with variations", async () => 
     /availability must agree with its variation/,
   );
 });
+
+test("affiliate links must use HTTPS on the matching marketplace domain", () => {
+  const cases = [
+    () =>
+      new AmazonAdapter(new FixtureClient([])).normalize({
+        ...amazon,
+        affiliateUrl: "https://www.flipkart.com/wrong-marketplace",
+      }),
+    () =>
+      new FlipkartAdapter(new FixtureClient([])).normalize({
+        ...flipkart,
+        affiliateUrl: "http://www.flipkart.com/insecure-link",
+      }),
+    () =>
+      new MeeshoAdapter(new FixtureClient([])).normalize({
+        ...meesho,
+        affiliateUrl: "https://meesho.example.com/lookalike",
+      }),
+    () =>
+      new MyntraAdapter(new FixtureClient([])).normalize({
+        ...myntra,
+        affiliateUrl: "https://www.ajio.com/wrong-fashion-platform",
+      }),
+    () =>
+      new AjioAdapter(new FixtureClient([])).normalize({
+        ...ajio,
+        affiliateUrl: "https://www.myntra.com/wrong-fashion-platform",
+      }),
+  ];
+
+  for (const validate of cases) {
+    assert.throws(validate, /approved marketplace domain|must use HTTPS/);
+  }
+});

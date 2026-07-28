@@ -43,7 +43,7 @@ runtime evidence.
 - The PostgreSQL seed produced five marketplace rules and at least one record
   in every other policy model while preserving all 50 products.
 - A second PostgreSQL seed run left all aggregate counts unchanged.
-- The complete repository quality gate passes 68 checks, including the
+- The complete repository quality gate passes 71 checks, including the
   production build, authentication boundaries, model coverage, sources, and
   administrator audit workflow.
 
@@ -80,7 +80,7 @@ runtime evidence.
   `5 marketplaces | 10 sources | 10 schedules | 50 products | 5 marketplace
 rules | 2 commission rules | 1 content policy | 1 disclosure | 1 prohibited
 practice`.
-- The complete repository quality gate passes 68 checks, including ingestion
+- The complete repository quality gate passes 71 checks, including ingestion
   schemas, normalization, canonical-key stability, confidence thresholds,
   freshness, retry backoff, and D1 seed execution.
 
@@ -118,7 +118,7 @@ practice`.
 - Unit coverage verifies window membership, expiry, source confidence,
   spike detection, v2 net commission, penalties, and marketplace/category
   multipliers.
-- The complete repository quality gate passes 68 checks.
+- The complete repository quality gate passes 71 checks.
 
 ## Compliance engine
 
@@ -147,7 +147,7 @@ practice`.
 - Unit coverage verifies compliant content, price and discount mismatches,
   missing disclosure, prohibited and unsupported claims, exact-product
   identity, and colour matching.
-- The complete repository quality gate passes 68 checks.
+- The complete repository quality gate passes 71 checks.
 
 ## Recommendation experience
 
@@ -181,7 +181,7 @@ practice`.
 - The production build includes protected `/saved`, `/compare`, and
   `/api/saved-products` routes.
 - Query validation covers all six recommendation view contracts.
-- The complete repository quality gate passes 68 checks.
+- The complete repository quality gate passes 71 checks.
 
 ## Marketplace partner adapter contracts
 
@@ -208,7 +208,7 @@ practice`.
 
 ## Adapter validation evidence
 
-- Six adapter tests cover valid normalization and invalid-domain, price,
+- Seven adapter tests cover valid normalization and invalid-domain, price,
   discount, and availability failure paths across all five marketplaces.
 - The forward-only D1 seed adds one disabled API source and disabled schedule
   per marketplace while preserving the five existing manual sources.
@@ -217,18 +217,44 @@ practice`.
 - PostgreSQL aggregate evidence after the second seed:
   `5 marketplaces | 10 sources | 5 manual READY | 5 API DISABLED |
 10 disabled schedules | 50 products`.
-- The complete repository quality gate passes 68 checks, including formatting,
+- The complete repository quality gate passes 71 checks, including formatting,
   lint, strict type checks, production build, route tests, all prior Phase 1
-  and Phase 2 coverage, and the six new adapter contracts.
+  and Phase 2 coverage, and the seven adapter contracts.
+
+## Phase 2 release hardening
+
+- [x] Per-source freshness state distinguishes never-synced, fresh, aging, and
+      stale data using each source's configured freshness window.
+- [x] Source-health responses include data age, remaining freshness, projected
+      stale time, and warning or critical alert details.
+- [x] Active sources alert on missing first success, stale data, consecutive
+      failures, and active rate limits.
+- [x] Three consecutive failures and stale data escalate to critical severity.
+- [x] Disabled partner sources remain visible without generating false
+      operational alerts before partner access is configured.
+- [x] Critical marketplace-source alerts enter the existing redacted external
+      monitoring path while the source-health API remains available.
+- [x] The source-operations interface displays freshness and alert details for
+      operator triage.
+- [x] Affiliate-link validation tests require HTTPS and the exact matching
+      marketplace domain across Amazon, Flipkart, Meesho, Myntra, and AJIO.
+
+## Release-hardening validation evidence
+
+- Deterministic tests cover all four freshness states, stale-window arithmetic,
+  failure escalation, rate-limit alerts, and disabled-source suppression.
+- Link tests reject insecure, lookalike, and cross-marketplace affiliate URLs
+  for every supported marketplace.
+- The complete repository quality gate passes 71 checks, including the
+  production build and all prior Phase 1 and Phase 2 coverage.
 
 ## Next Phase 2 slice
 
-The next repository-controlled target is Phase 2 release hardening: integration
-alerts, freshness indicators, source failure scenarios, affiliate-link
-validation, and release notes. Live marketplace credentials, supported partner
-API access, authenticated transport clients, and enabled schedules remain
-external integration gates; no test fixture or sample value is presented as
-live marketplace evidence.
+The next repository-controlled target is the Phase 2 release audit, remaining
+priority-defect repair, and release notes. Live marketplace credentials,
+supported partner API access, authenticated transport clients, and enabled
+schedules remain external integration gates; no test fixture or sample value
+is presented as live marketplace evidence.
 
 ## Release
 

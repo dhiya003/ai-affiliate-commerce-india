@@ -13,6 +13,18 @@ export type RunStatus =
   "RUNNING" | "SUCCEEDED" | "PARTIAL" | "FAILED" | "RETRY_SCHEDULED";
 export type AvailabilityStatus = "AVAILABLE" | "UNAVAILABLE" | "UNKNOWN";
 export type MatchStatus = "EXACT" | "PROBABLE" | "REVIEW";
+export type SourceFreshnessStatus =
+  "NEVER_SYNCED" | "FRESH" | "AGING" | "STALE";
+
+export interface SourceAlert {
+  code:
+    | "SOURCE_NEVER_SYNCED"
+    | "SOURCE_STALE"
+    | "SOURCE_FAILURES"
+    | "SOURCE_RATE_LIMITED";
+  severity: "WARNING" | "CRITICAL";
+  message: string;
+}
 
 export interface NormalizedProduct {
   marketplace: MarketplaceName;
@@ -81,6 +93,13 @@ export interface SourceHealth {
   consecutiveFailures: number;
   rateLimitedUntil: string | null;
   health: "HEALTHY" | "STALE" | "DEGRADED" | "DISABLED";
+  freshness: {
+    status: SourceFreshnessStatus;
+    ageMinutes: number | null;
+    remainingMinutes: number | null;
+    staleAt: string | null;
+  };
+  alerts: SourceAlert[];
   latestRun: {
     id: string;
     status: RunStatus;

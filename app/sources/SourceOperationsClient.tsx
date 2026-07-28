@@ -64,6 +64,15 @@ function formatTime(value: string | null) {
   }).format(new Date(value));
 }
 
+function freshnessLabel(source: SourceHealth) {
+  if (source.health === "DISABLED") return "Disabled pending partner access";
+  if (source.freshness.status === "NEVER_SYNCED") return "Awaiting first run";
+  if (source.freshness.status === "STALE") {
+    return `${source.freshness.ageMinutes ?? 0} min old · stale`;
+  }
+  return `${source.freshness.ageMinutes ?? 0} min old · ${source.freshness.status.toLowerCase()}`;
+}
+
 export function SourceOperationsClient({
   initialSources,
   initialStatistics,
@@ -238,6 +247,25 @@ export function SourceOperationsClient({
                 <p className="mt-4 text-[11px] text-[#7b867e]">
                   Last success: {formatTime(source.lastSuccessAt)}
                 </p>
+                <p className="mt-1 text-[11px] font-semibold text-[#53685a]">
+                  Freshness: {freshnessLabel(source)}
+                </p>
+                {source.alerts.length ? (
+                  <div className="mt-3 space-y-1.5">
+                    {source.alerts.map((alert) => (
+                      <p
+                        key={alert.code}
+                        className={`rounded-lg px-2 py-1.5 text-[10px] font-semibold ${
+                          alert.severity === "CRITICAL"
+                            ? "bg-red-50 text-red-800"
+                            : "bg-amber-50 text-amber-800"
+                        }`}
+                      >
+                        {alert.message}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
               </button>
             ))}
           </div>
