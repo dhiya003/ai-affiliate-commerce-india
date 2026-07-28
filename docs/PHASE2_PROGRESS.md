@@ -43,7 +43,7 @@ runtime evidence.
 - The PostgreSQL seed produced five marketplace rules and at least one record
   in every other policy model while preserving all 50 products.
 - A second PostgreSQL seed run left all aggregate counts unchanged.
-- The complete repository quality gate passes 61 checks, including the
+- The complete repository quality gate passes 62 checks, including the
   production build, authentication boundaries, model coverage, sources, and
   administrator audit workflow.
 
@@ -79,7 +79,7 @@ runtime evidence.
   `5 marketplaces | 5 sources | 5 schedules | 50 products | 5 marketplace
 rules | 2 commission rules | 1 content policy | 1 disclosure | 1 prohibited
 practice`.
-- The complete repository quality gate passes 61 checks, including ingestion
+- The complete repository quality gate passes 62 checks, including ingestion
   schemas, normalization, canonical-key stability, confidence thresholds,
   freshness, retry backoff, and D1 seed execution.
 
@@ -117,7 +117,7 @@ practice`.
 - Unit coverage verifies window membership, expiry, source confidence,
   spike detection, v2 net commission, penalties, and marketplace/category
   multipliers.
-- The complete repository quality gate passes 61 checks.
+- The complete repository quality gate passes 62 checks.
 
 ## Compliance engine
 
@@ -146,16 +146,50 @@ practice`.
 - Unit coverage verifies compliant content, price and discount mismatches,
   missing disclosure, prohibited and unsupported claims, exact-product
   identity, and colour matching.
-- The complete repository quality gate passes 61 checks.
+- The complete repository quality gate passes 62 checks.
+
+## Recommendation experience
+
+- [x] “Today’s top 10,” emerging, low-competition, high-commission,
+      viral-potential, and seasonal recommendation views.
+- [x] Marketplace and category lists through the existing verified catalogue
+      filters.
+- [x] Durable, user-owned saved-product model in D1 and PostgreSQL.
+- [x] Protected saved-product create, list, and remove API.
+- [x] Signed-in saved-products workspace with explicit empty state.
+- [x] Two-to-four-product comparison workflow.
+- [x] Side-by-side recommendation explanations using opportunity, commission,
+      seller, stock, trend, content, and compliance evidence.
+- [x] “Why now?” explanations that distinguish verified trend evidence from
+      unproven timing.
+- [x] Target-audience and content-angle recommendations from the latest saved
+      content bundle.
+- [x] Risk and caution summaries covering return risk, availability,
+      compliance blocks, and missing affiliate URLs.
+- [x] Evidence-dependent recommendation views return empty states when their
+      required signal does not exist; they do not promote sample values as live
+      evidence.
+
+## Recommendation validation evidence
+
+- The forward-only D1 migration creates the saved-products table with
+  user/product uniqueness and user/time indexing.
+- An isolated PostgreSQL 16 database applied all six repository migrations,
+  seeded the existing catalogue, and contained the account-backed saved-product
+  table.
+- The production build includes protected `/saved`, `/compare`, and
+  `/api/saved-products` routes.
+- Query validation covers all six recommendation view contracts.
+- The complete repository quality gate passes 62 checks.
 
 ## Next Phase 2 slice
 
-The next repository-controlled target is the evidence-to-recommendation
-experience: top-10 views, recommendation explanations, “why now,” audience and
-content angles, comparisons, saves, and risk summaries. Live marketplace
-credentials, supported partner API access, production adapters, and enabled
-schedules remain external integration gates; no sample value is presented as
-live marketplace evidence.
+The next repository-controlled target is Phase 2 release hardening: integration
+alerts, freshness indicators, adapter/source failure scenarios, affiliate-link
+validation, release notes, and the remaining credential-independent adapter
+contracts. Live marketplace credentials, supported partner API access,
+production adapters, and enabled schedules remain external integration gates;
+no sample value is presented as live marketplace evidence.
 
 ## Release
 

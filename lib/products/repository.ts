@@ -196,14 +196,55 @@ export async function listProducts(
     clauses.push("current_price <= ?");
     values.push(query.maxPrice);
   }
+  if (query.view === "emerging") {
+    clauses.push(
+      `EXISTS (
+        SELECT 1 FROM trend_signals ts
+        WHERE ts.product_id = products.id
+          AND ts.signal_type = 'NEW_PRODUCT_VELOCITY'
+          AND ts.normalized_score >= 60
+      )`,
+    );
+  }
+  if (query.view === "low-competition") {
+    clauses.push(
+      "COALESCE(json_extract(score_json, '$.breakdown.competitionScore'), 0) >= 65",
+    );
+  }
+  if (query.view === "high-commission") {
+    clauses.push("commission_rate >= 8");
+  }
+  if (query.view === "viral-potential") {
+    clauses.push(
+      `EXISTS (
+        SELECT 1 FROM opportunity_score_evidence ose
+        WHERE ose.product_id = products.id
+          AND COALESCE(json_extract(ose.breakdown_json, '$.viralityScore'), 0) >= 65
+      )`,
+    );
+  }
+  if (query.view === "seasonal") {
+    clauses.push(
+      `EXISTS (
+        SELECT 1 FROM trend_signals ts
+        WHERE ts.product_id = products.id
+          AND ts.signal_type IN ('SEASONAL_DEMAND', 'FESTIVAL_DEMAND')
+          AND ts.normalized_score >= 60
+      )`,
+    );
+  }
 
-  const orderBy = {
+  const defaultOrderBy = {
     score: "opportunity_score DESC, updated_at DESC",
     newest: "created_at DESC",
     "price-asc": "current_price ASC",
     "price-desc": "current_price DESC",
     rating: "rating DESC, review_count DESC",
   }[query.sort];
+  const orderBy =
+    query.view === "high-commission"
+      ? "commission_rate DESC, opportunity_score DESC"
+      : defaultOrderBy;
   const where = clauses.join(" AND ");
   const offset = (query.page - 1) * query.pageSize;
   const db = await database();

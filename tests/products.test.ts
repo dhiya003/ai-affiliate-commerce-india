@@ -101,6 +101,26 @@ test("validates catalogue filters and pagination boundaries", () => {
   );
 });
 
+test("validates evidence-backed recommendation views", () => {
+  for (const view of [
+    "top",
+    "emerging",
+    "low-competition",
+    "high-commission",
+    "viral-potential",
+    "seasonal",
+  ]) {
+    assert.equal(
+      productListQuerySchema.safeParse({ view, page: 1, pageSize: 10 }).success,
+      true,
+    );
+  }
+  assert.equal(
+    productListQuerySchema.safeParse({ view: "invented" }).success,
+    false,
+  );
+});
+
 test("Sites migration creates durable product tables, indexes, and seed data", async () => {
   const sql = await readFile(
     new URL("../drizzle/0000_real_pandemic.sql", import.meta.url),

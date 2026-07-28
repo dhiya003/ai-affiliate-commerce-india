@@ -249,6 +249,7 @@ model Product {
   sourceTrendScores    SourceTrendScore[]
   scoreEvidence        OpportunityScoreEvidence[]
   complianceChecks     ComplianceCheck[]
+  savedBy              SavedProduct[]
 
   @@unique([marketplaceId, marketplaceProductId])
   @@index([status, isActive])
@@ -742,4 +743,15 @@ model ComplianceOverride {
 
   @@index([checkId, createdAt(sort: Desc)])
   @@index([overriddenByEmail, createdAt(sort: Desc)])
+}
+
+model SavedProduct {
+  id        String   @id @default(cuid())
+  productId String
+  userEmail String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userEmail, productId])
+  @@index([userEmail, createdAt(sort: Desc)])
 }

@@ -623,6 +623,25 @@ export const complianceOverrides = sqliteTable(
   ],
 );
 
+export const savedProducts = sqliteTable(
+  "saved_products",
+  {
+    id: text("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    userEmail: text("user_email").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("saved_products_user_product_unique").on(
+      table.userEmail,
+      table.productId,
+    ),
+    index("saved_products_user_time_idx").on(table.userEmail, table.createdAt),
+  ],
+);
+
 export type ProductRecord = typeof products.$inferSelect;
 export type NewProductRecord = typeof products.$inferInsert;
 export type GeneratedContentRecord = typeof generatedContent.$inferSelect;

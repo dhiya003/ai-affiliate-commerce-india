@@ -89,6 +89,16 @@ export const productListQuerySchema = z
     minRating: z.coerce.number().min(0).max(5).optional(),
     minPrice: z.coerce.number().min(0).optional(),
     maxPrice: z.coerce.number().min(0).optional(),
+    view: z
+      .enum([
+        "top",
+        "emerging",
+        "low-competition",
+        "high-commission",
+        "viral-potential",
+        "seasonal",
+      ])
+      .optional(),
     sort: z
       .enum(["score", "newest", "price-asc", "price-desc", "rating"])
       .default("score"),

@@ -2,10 +2,12 @@
 
 import {
   ArrowLeft,
+  Bookmark,
   ChevronLeft,
   ChevronRight,
   CircleAlert,
   Filter,
+  GitCompareArrows,
   LoaderCircle,
   PackagePlus,
   Search,
@@ -15,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ProductIntakeDialog } from "@/components/products/ProductIntakeDialog";
 import { ProductMedia } from "@/components/products/ProductMedia";
 import {
@@ -55,6 +57,7 @@ const initialFilters = {
   minPrice: "",
   maxPrice: "",
   sort: "score",
+  view: "",
 };
 
 function formatInr(value: number) {
@@ -76,18 +79,33 @@ export function ProductCatalogClient({
   const [error, setError] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [intakeOpen, setIntakeOpen] = useState(false);
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
 
   const [categories, setCategories] = useState(initialCategories);
 
-  async function loadProducts(page = 1) {
+  useEffect(() => {
+    void fetch("/api/saved-products")
+      .then(async (response) => {
+        const payload = (await response.json()) as ApiEnvelope<
+          Array<{ product: Product }>
+        >;
+        if (response.ok && payload.data) {
+          setSavedIds(payload.data.map((item) => item.product.id));
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
+  async function loadProducts(page = 1, activeFilters = filters) {
     setLoading(true);
     setError(null);
     const params = new URLSearchParams({
       page: String(page),
-      pageSize: "12",
-      sort: filters.sort,
+      pageSize: activeFilters.view === "top" ? "10" : "12",
+      sort: activeFilters.sort,
     });
-    for (const [key, value] of Object.entries(filters)) {
+    for (const [key, value] of Object.entries(activeFilters)) {
       if (key !== "sort" && value.trim()) params.set(key, value.trim());
     }
 
@@ -109,6 +127,40 @@ export function ProductCatalogClient({
     } finally {
       setLoading(false);
     }
+  }
+
+  function applyPreset(view: string) {
+    const next = { ...initialFilters, view };
+    setFilters(next);
+    void loadProducts(1, next);
+  }
+
+  async function toggleSaved(productId: string) {
+    const saved = savedIds.includes(productId);
+    const response = await fetch("/api/saved-products", {
+      method: saved ? "DELETE" : "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ productId }),
+    });
+    if (!response.ok) {
+      setError("Saved products could not be updated.");
+      return;
+    }
+    setSavedIds((current) =>
+      saved
+        ? current.filter((id) => id !== productId)
+        : [...current, productId],
+    );
+  }
+
+  function toggleCompare(productId: string) {
+    setCompareIds((current) =>
+      current.includes(productId)
+        ? current.filter((id) => id !== productId)
+        : current.length < 4
+          ? [...current, productId]
+          : current,
+    );
   }
 
   function submitFilters(event: FormEvent) {
@@ -202,6 +254,49 @@ export function ProductCatalogClient({
             )}
             {filtersOpen ? "Close filters" : "Filter products"}
           </button>
+        </section>
+
+        <section
+          className="mt-6 flex flex-wrap gap-2"
+          aria-label="Recommendation views"
+        >
+          {[
+            ["top", "Today’s top 10"],
+            ["emerging", "Emerging"],
+            ["low-competition", "Low competition"],
+            ["high-commission", "High commission"],
+            ["viral-potential", "Viral potential"],
+            ["seasonal", "Seasonal"],
+          ].map(([view, label]) => (
+            <button
+              key={view}
+              type="button"
+              onClick={() => applyPreset(view)}
+              className={`rounded-full border px-3 py-2 text-xs font-bold ${
+                filters.view === view
+                  ? "border-[#317746] bg-[#e4f2e7] text-[#27683a]"
+                  : "border-[#d6ddd5] bg-white text-[#657168]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+          <Link
+            href="/saved"
+            className="inline-flex items-center gap-2 rounded-full border border-[#d6ddd5] bg-white px-3 py-2 text-xs font-bold text-[#657168]"
+          >
+            <Bookmark className="size-3.5" />
+            Saved ({savedIds.length})
+          </Link>
+          {compareIds.length >= 2 ? (
+            <Link
+              href={`/compare?ids=${encodeURIComponent(compareIds.join(","))}`}
+              className="inline-flex items-center gap-2 rounded-full bg-[#173f2a] px-3 py-2 text-xs font-bold text-white"
+            >
+              <GitCompareArrows className="size-3.5" />
+              Compare {compareIds.length}
+            </Link>
+          ) : null}
         </section>
 
         <form
@@ -359,7 +454,14 @@ export function ProductCatalogClient({
           {result.products.length ? (
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {result.products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  saved={savedIds.includes(product.id)}
+                  selectedForComparison={compareIds.includes(product.id)}
+                  onToggleSaved={() => void toggleSaved(product.id)}
+                  onToggleCompare={() => toggleCompare(product.id)}
+                />
               ))}
             </section>
           ) : (
@@ -438,7 +540,19 @@ export function ProductCatalogClient({
   );
 }
 
-function ProductCard({ product }: { product: Product }) {
+function ProductCard({
+  product,
+  saved,
+  selectedForComparison,
+  onToggleSaved,
+  onToggleCompare,
+}: {
+  product: Product;
+  saved: boolean;
+  selectedForComparison: boolean;
+  onToggleSaved: () => void;
+  onToggleCompare: () => void;
+}) {
   const discount =
     product.originalPrice && product.originalPrice > product.currentPrice
       ? Math.round(
@@ -497,9 +611,36 @@ function ProductCard({ product }: { product: Product }) {
         </p>
       </div>
       <div className="flex items-center justify-between p-5">
-        <p className="text-[11px] text-[#869088]">
-          {product.ownerEmail ? "Your product" : "Sample opportunity"}
-        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onToggleSaved}
+            aria-label={saved ? "Remove from saved products" : "Save product"}
+            className={`grid size-9 place-items-center rounded-lg border ${
+              saved
+                ? "border-[#317746] bg-[#e4f2e7] text-[#27683a]"
+                : "border-[#d6ddd5] text-[#718077]"
+            }`}
+          >
+            <Bookmark className={`size-3.5 ${saved ? "fill-current" : ""}`} />
+          </button>
+          <button
+            type="button"
+            onClick={onToggleCompare}
+            aria-label={
+              selectedForComparison
+                ? "Remove from comparison"
+                : "Add to comparison"
+            }
+            className={`grid size-9 place-items-center rounded-lg border ${
+              selectedForComparison
+                ? "border-[#317746] bg-[#e4f2e7] text-[#27683a]"
+                : "border-[#d6ddd5] text-[#718077]"
+            }`}
+          >
+            <GitCompareArrows className="size-3.5" />
+          </button>
+        </div>
         <Link
           href={`/products/${encodeURIComponent(product.id)}`}
           className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#173f2a] px-4 text-xs font-bold text-white"
