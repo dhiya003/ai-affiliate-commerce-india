@@ -105,6 +105,27 @@ enum AvailabilityStatus {
   UNKNOWN
 }
 
+enum TrendSignalType {
+  GOOGLE_TRENDS
+  SOCIAL_MENTIONS
+  MARKETPLACE_BESTSELLER
+  REVIEW_GROWTH
+  PRICE_DROP
+  DISCOUNT_GROWTH
+  AVAILABILITY
+  CATEGORY_MOMENTUM
+  SEASONAL_DEMAND
+  FESTIVAL_DEMAND
+  NEW_PRODUCT_VELOCITY
+}
+
+enum TrendDirection {
+  SPIKING
+  RISING
+  STABLE
+  DECAYING
+}
+
 model User {
   id              String             @id @default(cuid())
   email           String             @unique
@@ -175,7 +196,7 @@ model ProductCategory {
 }
 
 model Product {
-  id                   String                 @id @default(cuid())
+  id                   String                     @id @default(cuid())
   marketplaceId        String
   marketplaceProductId String
   sellerId             String?
@@ -185,23 +206,23 @@ model Product {
   description          String?
   productUrl           String
   imageUrl             String?
-  currentPrice         Decimal                @db.Decimal(12, 2)
-  originalPrice        Decimal?               @db.Decimal(12, 2)
-  currency             String                 @default("INR") @db.VarChar(3)
-  rating               Decimal?               @db.Decimal(3, 2)
-  reviewCount          Int                    @default(0)
-  commissionRate       Decimal?               @db.Decimal(5, 2)
-  stockStatus          StockStatus            @default(UNKNOWN)
-  returnRisk           ReturnRisk             @default(UNKNOWN)
-  status               ProductWorkflowStatus  @default(NEW)
+  currentPrice         Decimal                    @db.Decimal(12, 2)
+  originalPrice        Decimal?                   @db.Decimal(12, 2)
+  currency             String                     @default("INR") @db.VarChar(3)
+  rating               Decimal?                   @db.Decimal(3, 2)
+  reviewCount          Int                        @default(0)
+  commissionRate       Decimal?                   @db.Decimal(5, 2)
+  stockStatus          StockStatus                @default(UNKNOWN)
+  returnRisk           ReturnRisk                 @default(UNKNOWN)
+  status               ProductWorkflowStatus      @default(NEW)
   notes                String?
-  isActive             Boolean                @default(true)
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  marketplace          Marketplace            @relation(fields: [marketplaceId], references: [id], onDelete: Restrict)
-  seller               Seller?                @relation(fields: [sellerId], references: [id], onDelete: SetNull)
-  category             ProductCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  createdBy            User?                  @relation("ProductCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  isActive             Boolean                    @default(true)
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+  marketplace          Marketplace                @relation(fields: [marketplaceId], references: [id], onDelete: Restrict)
+  seller               Seller?                    @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+  category             ProductCategory?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdBy            User?                      @relation("ProductCreator", fields: [createdById], references: [id], onDelete: SetNull)
   priceHistory         ProductPriceHistory[]
   scores               ProductScore[]
   generatedContent     GeneratedContent[]
@@ -210,6 +231,9 @@ model Product {
   affiliateLinks       AffiliateLink[]
   sourcePayloads       RawSourceData[]
   sourceMatches        ProductSourceMatch[]
+  trendSignals         TrendSignal[]
+  sourceTrendScores    SourceTrendScore[]
+  scoreEvidence        OpportunityScoreEvidence[]
 
   @@unique([marketplaceId, marketplaceProductId])
   @@index([status, isActive])
@@ -470,6 +494,7 @@ model ProductSource {
   matches                ProductSourceMatch[]
   errors                 IngestionError[]
   schedule               IngestionSchedule?
+  trendSignals           TrendSignal[]
 
   @@unique([marketplaceId, name])
   @@index([status, lastSuccessAt(sort: Desc)])
@@ -592,4 +617,60 @@ model IngestionSchedule {
   source         ProductSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@index([enabled, nextRunAt])
+}
+
+model TrendSignal {
+  id              String          @id @default(cuid())
+  productId       String
+  sourceId        String?
+  signalType      TrendSignalType
+  value           Decimal         @db.Decimal(18, 4)
+  normalizedScore Decimal         @db.Decimal(5, 2)
+  confidence      Decimal         @db.Decimal(5, 4)
+  observedAt      DateTime
+  expiresAt       DateTime?
+  metadata        Json
+  createdAt       DateTime        @default(now())
+  product         Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  source          ProductSource?  @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@index([productId, observedAt(sort: Desc)])
+  @@index([signalType, observedAt(sort: Desc)])
+  @@index([sourceId, observedAt(sort: Desc)])
+}
+
+model SourceTrendScore {
+  id           String         @id @default(cuid())
+  productId    String
+  sourceName   String
+  windowDays   Int
+  score        Decimal        @db.Decimal(5, 2)
+  confidence   Decimal        @db.Decimal(5, 4)
+  signalCount  Int
+  direction    TrendDirection
+  calculatedAt DateTime       @default(now())
+  provenance   Json
+  product      Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, sourceName, windowDays, calculatedAt])
+  @@index([score(sort: Desc), calculatedAt(sort: Desc)])
+}
+
+model OpportunityScoreEvidence {
+  id               String   @id @default(cuid())
+  productId        String
+  version          String
+  marketplace      String
+  category         String
+  opportunityScore Decimal  @db.Decimal(5, 2)
+  input            Json
+  weights          Json
+  breakdown        Json
+  penalties        Json
+  explanation      Json
+  calculatedAt     DateTime @default(now())
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, calculatedAt(sort: Desc)])
+  @@index([version, opportunityScore(sort: Desc)])
 }

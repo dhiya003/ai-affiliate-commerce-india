@@ -442,6 +442,101 @@ export const ingestionSchedules = sqliteTable(
   ],
 );
 
+export const trendSignals = sqliteTable(
+  "trend_signals",
+  {
+    id: text("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    sourceId: text("source_id").references(() => productSources.id, {
+      onDelete: "set null",
+    }),
+    signalType: text("signal_type").notNull(),
+    value: real("value").notNull(),
+    normalizedScore: real("normalized_score").notNull(),
+    confidence: real("confidence").notNull(),
+    observedAt: text("observed_at").notNull(),
+    expiresAt: text("expires_at"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("trend_signals_product_observed_idx").on(
+      table.productId,
+      table.observedAt,
+    ),
+    index("trend_signals_type_observed_idx").on(
+      table.signalType,
+      table.observedAt,
+    ),
+    index("trend_signals_source_observed_idx").on(
+      table.sourceId,
+      table.observedAt,
+    ),
+  ],
+);
+
+export const sourceTrendScores = sqliteTable(
+  "source_trend_scores",
+  {
+    id: text("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    sourceName: text("source_name").notNull(),
+    windowDays: integer("window_days").notNull(),
+    score: real("score").notNull(),
+    confidence: real("confidence").notNull(),
+    signalCount: integer("signal_count").notNull(),
+    direction: text("direction").notNull(),
+    calculatedAt: text("calculated_at").notNull(),
+    provenanceJson: text("provenance_json").notNull().default("{}"),
+  },
+  (table) => [
+    uniqueIndex("source_trend_scores_product_source_window_time_unique").on(
+      table.productId,
+      table.sourceName,
+      table.windowDays,
+      table.calculatedAt,
+    ),
+    index("source_trend_scores_score_time_idx").on(
+      table.score,
+      table.calculatedAt,
+    ),
+  ],
+);
+
+export const opportunityScoreEvidence = sqliteTable(
+  "opportunity_score_evidence",
+  {
+    id: text("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    version: text("version").notNull(),
+    marketplace: text("marketplace").notNull(),
+    category: text("category").notNull(),
+    opportunityScore: real("opportunity_score").notNull(),
+    inputJson: text("input_json").notNull(),
+    weightsJson: text("weights_json").notNull(),
+    breakdownJson: text("breakdown_json").notNull(),
+    penaltiesJson: text("penalties_json").notNull(),
+    explanationJson: text("explanation_json").notNull(),
+    calculatedAt: text("calculated_at").notNull(),
+  },
+  (table) => [
+    index("opportunity_score_evidence_product_time_idx").on(
+      table.productId,
+      table.calculatedAt,
+    ),
+    index("opportunity_score_evidence_version_score_idx").on(
+      table.version,
+      table.opportunityScore,
+    ),
+  ],
+);
+
 export type ProductRecord = typeof products.$inferSelect;
 export type NewProductRecord = typeof products.$inferInsert;
 export type GeneratedContentRecord = typeof generatedContent.$inferSelect;

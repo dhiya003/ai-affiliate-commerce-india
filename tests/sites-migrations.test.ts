@@ -67,6 +67,7 @@ test("Sites migrations produce seeded Phase 2 ingestion sources", async () => {
       "../drizzle/0006_seed_phase2_ingestion_sources.sql",
       import.meta.url,
     ),
+    new URL("../drizzle/0007_worried_doctor_spectrum.sql", import.meta.url),
   ];
   const migrations = await Promise.all(
     migrationUrls.map((url) => readFile(url, "utf8")),
@@ -97,6 +98,19 @@ test("Sites migrations produce seeded Phase 2 ingestion sources", async () => {
       .get() as { count: number; enabled: number };
     assert.equal(schedules.count, 5);
     assert.equal(schedules.enabled, 0);
+
+    const intelligenceTables = database
+      .prepare(
+        `SELECT COUNT(*) AS count FROM sqlite_master
+         WHERE type = 'table'
+           AND name IN (
+             'trend_signals',
+             'source_trend_scores',
+             'opportunity_score_evidence'
+           )`,
+      )
+      .get() as { count: number };
+    assert.equal(intelligenceTables.count, 3);
   } finally {
     database.close();
   }

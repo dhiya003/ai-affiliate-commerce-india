@@ -43,7 +43,7 @@ runtime evidence.
 - The PostgreSQL seed produced five marketplace rules and at least one record
   in every other policy model while preserving all 50 products.
 - A second PostgreSQL seed run left all aggregate counts unchanged.
-- The complete repository quality gate passes 52 checks, including the
+- The complete repository quality gate passes 57 checks, including the
   production build, authentication boundaries, model coverage, sources, and
   administrator audit workflow.
 
@@ -77,18 +77,54 @@ runtime evidence.
   seeded twice without count drift.
 - PostgreSQL aggregate evidence after the second seed:
   `5 marketplaces | 5 sources | 5 schedules | 50 products | 5 marketplace
-  rules | 2 commission rules | 1 content policy | 1 disclosure | 1 prohibited
-  practice`.
-- The complete repository quality gate passes 52 checks, including ingestion
+rules | 2 commission rules | 1 content policy | 1 disclosure | 1 prohibited
+practice`.
+- The complete repository quality gate passes 57 checks, including ingestion
   schemas, normalization, canonical-key stability, confidence thresholds,
   freshness, retry backoff, and D1 seed execution.
 
+## Trend intelligence and scoring v2 foundation
+
+- [x] Trend-signal, source-trend-score, and immutable opportunity-score-evidence
+      models in D1 and PostgreSQL.
+- [x] Explicit signal types for Google Trends, social mentions, marketplace
+      bestseller rank, review growth, price and discount movement,
+      availability, category momentum, seasonal and festival demand, and
+      new-product velocity.
+- [x] Confidence-aware, source-weighted, time-decayed seven-day and 30-day
+      calculations.
+- [x] Trend spike, rise, stability, and decay classification.
+- [x] Scoring v2 contract with demand, trend, gross and net commission,
+      return-risk, seller reliability, saturation, virality, price band,
+      category conversion, festival relevance, audience size, visual appeal,
+      urgency, and stock stability factors.
+- [x] Marketplace-specific and category-specific factor multipliers.
+- [x] Source-confidence, missing-data, and return-risk penalties.
+- [x] Explainable factor contributions, cautions, weights, and persisted
+      provenance.
+- [x] Administrator-only trend-evidence recording and authenticated evidence
+      reads.
+- [x] Product detail trend-provenance interface that reports absent evidence as
+      unproven instead of substituting a midpoint.
+
+## Trend/scoring validation evidence
+
+- The forward-only D1 migration creates all three intelligence tables after the
+  policy and ingestion migrations.
+- An isolated PostgreSQL 16 database applied all four repository migrations,
+  seeded the existing 50-product catalogue, and contained all three trend and
+  score-evidence tables.
+- Unit coverage verifies window membership, expiry, source confidence,
+  spike detection, v2 net commission, penalties, and marketplace/category
+  multipliers.
+- The complete repository quality gate passes 57 checks.
+
 ## Next Phase 2 slice
 
-The next repository-controlled target is opportunity-scoring version 2:
-replace placeholder trend, demand, and competition inputs with explicit
-evidence models and explainable score provenance. Real marketplace credentials,
-live adapters, and production schedules remain external integration gates.
+The next repository-controlled target is the compliance engine and
+evidence-to-recommendation workflow. Live marketplace credentials, supported
+partner API access, production adapters, and enabled schedules remain external
+integration gates; no sample value is presented as live marketplace evidence.
 
 ## Release
 

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   ArrowLeft,
   BadgeIndianRupee,
   Check,
@@ -20,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ContentStudio } from "@/components/content/ContentStudio";
 import { ProductEditDialog } from "@/components/products/ProductEditDialog";
 import { ProductMedia } from "@/components/products/ProductMedia";
@@ -43,6 +44,22 @@ interface ApiEnvelope<T> {
   success: boolean;
   data?: T;
   error?: { message: string };
+}
+
+interface TrendIntelligence {
+  signals: Array<{
+    type: string;
+    source: string;
+    normalizedScore: number;
+    confidence: number;
+    observedAt: string;
+  }>;
+  assessment: {
+    sevenDay: { score: number; confidence: number; signalCount: number };
+    thirtyDay: { score: number; confidence: number; signalCount: number };
+    direction: "SPIKING" | "RISING" | "STABLE" | "DECAYING";
+    spikeMagnitude: number;
+  };
 }
 
 const statusLabels: Record<ProductStatus, string> = {
@@ -95,6 +112,28 @@ export function ProductDetailClient({
   const [message, setMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [trendIntelligence, setTrendIntelligence] =
+    useState<TrendIntelligence | null>(null);
+  const [trendUnavailable, setTrendUnavailable] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void fetch(`/api/products/${initialProduct.id}/trends`)
+      .then(async (response) => {
+        const result =
+          (await response.json()) as ApiEnvelope<TrendIntelligence>;
+        if (!response.ok || !result.data) {
+          throw new Error("Trend evidence could not be loaded.");
+        }
+        if (active) setTrendIntelligence(result.data);
+      })
+      .catch(() => {
+        if (active) setTrendUnavailable(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [initialProduct.id]);
 
   const scoreFactors = useMemo(() => {
     if (!product.score?.breakdown) return [];
@@ -448,6 +487,71 @@ export function ProductDetailClient({
                   value={product.returnRisk.toLowerCase()}
                 />
               </div>
+            </section>
+
+            <section className="rounded-3xl border border-[#dce2db] bg-white p-6 sm:p-8">
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 place-items-center rounded-xl bg-[#e4f2e7] text-[#317746]">
+                  <Activity className="size-[18px]" />
+                </span>
+                <div>
+                  <p className="text-xs font-bold tracking-[0.14em] text-[#4c815b] uppercase">
+                    Evidence-backed intelligence
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold">
+                    Trend signal provenance
+                  </h2>
+                </div>
+              </div>
+              {trendUnavailable ? (
+                <p className="mt-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+                  Trend evidence is temporarily unavailable; the existing score
+                  remains visible and no synthetic signal has been substituted.
+                </p>
+              ) : trendIntelligence?.signals.length ? (
+                <>
+                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                    <Insight
+                      icon={TrendingUp}
+                      label="7-day trend"
+                      value={`${Math.round(trendIntelligence.assessment.sevenDay.score)}/100`}
+                    />
+                    <Insight
+                      icon={Activity}
+                      label="30-day trend"
+                      value={`${Math.round(trendIntelligence.assessment.thirtyDay.score)}/100`}
+                    />
+                    <Insight
+                      icon={ShieldCheck}
+                      label="Direction"
+                      value={trendIntelligence.assessment.direction.toLowerCase()}
+                    />
+                  </div>
+                  <div className="mt-5 space-y-2">
+                    {trendIntelligence.signals.slice(0, 5).map((signal) => (
+                      <div
+                        key={`${signal.type}-${signal.source}-${signal.observedAt}`}
+                        className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-[#e5e9e4] px-4 py-3 text-xs"
+                      >
+                        <span className="font-semibold">
+                          {signal.type.replaceAll("_", " ").toLowerCase()}
+                        </span>
+                        <span className="text-[#748078]">{signal.source}</span>
+                        <span className="ml-auto font-bold text-[#317746]">
+                          {Math.round(signal.normalizedScore)}/100 ·{" "}
+                          {Math.round(signal.confidence * 100)}% confidence
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="mt-5 rounded-xl bg-[#f5f7f4] p-4 text-sm leading-6 text-[#68736b]">
+                  No verified trend evidence has been recorded yet. Trend and
+                  demand remain unproven rather than defaulting to a fabricated
+                  midpoint.
+                </p>
+              )}
             </section>
 
             <section className="rounded-3xl border border-[#dce2db] bg-white p-6 sm:p-8">
