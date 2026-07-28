@@ -85,6 +85,13 @@
       "when": 1785270548336,
       "tag": "0011_phase3_campaign_tracking_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1785271806644,
+      "tag": "0012_phase3_experiment_learning_foundation",
+      "breakpoints": true
     }
   ]
 }

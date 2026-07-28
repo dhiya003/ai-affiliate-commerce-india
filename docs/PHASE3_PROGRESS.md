@@ -44,23 +44,26 @@ runtime evidence.
 - [x] Owner and time indexes for campaign, promotion, tracked-link, conversion,
       and commission queries.
 - [x] No raw external order identifier is stored by the attribution models.
+- [x] Durable experiment, assigned-variation, immutable result-snapshot,
+      recommendation-feedback, learning-profile, scoring-weight-version, and
+      recommendation-quality-snapshot models.
 
 ## Validation evidence
 
 - The forward-only D1 migration creates eight Phase 3 tables, at least 27
   indexes, and the expected campaign/promotion and tracking foreign keys after
   every Phase 1 and Phase 2 migration.
-- A fresh PostgreSQL 16 database applied all seven repository migrations
+- A fresh PostgreSQL 16 database applied all eight repository migrations
   without manual intervention.
-- PostgreSQL schema evidence contains eight Phase 3 tables, 16 foreign keys,
-  and 35 indexes.
+- PostgreSQL experiment and learning evidence contains seven additional tables,
+  10 foreign keys, and 23 indexes.
 - The existing 50-product seed applied twice after the Phase 3 migration
   without count drift.
 - Campaign validators reject reversed date ranges, invalid budgets, unsupported
   lifecycle actions, and unbounded filters.
 - Campaign repository and API tests verify owner-scoped reads and mutations,
   authenticated identity, and server-side validation.
-- The complete repository quality gate passes 88 checks, including formatting,
+- The complete repository quality gate passes 99 checks, including formatting,
   lint, strict type checks, the production build, migration execution, schema
   privacy invariants, and all prior Phase 1 and Phase 2 coverage.
 
@@ -109,15 +112,56 @@ runtime evidence.
   imports, lifecycle states, owner scoping, date ranges, and aggregation shape.
 - The production build contains campaign promotion, public tracked redirect,
   performance read, attribution import, and signed-in dashboard routes.
-- The complete repository quality gate passes 88 checks.
+- The complete repository quality gate passes 99 checks.
+
+## Content experiments and learning
+
+- [x] Signed-in experiment and learning workspace at `/experiments`.
+- [x] Owner-scoped content-variation creation and listing.
+- [x] A/B and multivariate test setup with two to five unique variations and
+      allocation that must total exactly 100 percent.
+- [x] Draft, running, completed, and archived experiment lifecycle.
+- [x] Immutable performance snapshots derived from verified clicks, accepted
+      conversions, and approved or paid commission.
+- [x] Explicit winner selection blocked below the configured confidence
+      threshold.
+- [x] Winner and loser state retained on the tested creative records.
+- [x] Recommendation feedback captures approved, rejected, promoted, skipped,
+      successful, and unsuccessful decisions with bounded audience, timing, and
+      reason context.
+- [x] Administrator-only learning refresh over a bounded evidence window.
+- [x] Learning profiles summarize marketplace, category, price band, commission
+      band, creator, audience, hook, CTA, caption tone, season, and festival.
+- [x] Event streams are pre-aggregated before joining so click, conversion, and
+      commission evidence is not multiplied.
+- [x] The interface states that profiles are evidence summaries and never
+      silently change production scoring weights.
+
+The confidence calculation is a two-proportion normal approximation over
+conversion outcomes. Metrics such as clicks, commission, and earnings per click
+remain visible result measures, but a winner is not presented as statistically
+proven without conversion evidence.
+
+## Experiment and learning validation evidence
+
+- D1 migrations execute from the Phase 1 base through the experiment and
+  learning foundation in an in-memory SQLite verifier.
+- A disposable PostgreSQL 16 instance applied all eight migrations and the
+  50-product seed twice without count drift.
+- Tests cover creative-content requirements, unique variations, exact traffic
+  allocation, confidence behavior, winner gating, bounded feedback, the
+  default 90-day evidence window, learning dimensions, owner scoping, and
+  administrator-only refresh.
+- The production build includes all four experiment/learning APIs and the
+  signed-in workspace.
+- The complete repository quality gate passes 99 checks.
 
 ## Next Phase 3 slice
 
-The next target is content experimentation and recommendation feedback:
-variation creation, A/B test setup, winner selection, feedback capture, and
-performance-derived learning inputs. The current tracking workflow is
-production-shaped but remains empty until operator-owned campaigns receive
-real traffic and approved attribution imports.
+The next target is governed scoring-weight experimentation, recommendation
+quality snapshots, and scheduled optimization jobs. Automatic production
+weight changes remain intentionally disabled until a proposed version has
+evidence, comparison results, administrator approval, and rollback support.
 
 ## Release
 

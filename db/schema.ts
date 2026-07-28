@@ -935,6 +935,220 @@ export const commissionEvents = sqliteTable(
   ],
 );
 
+export const contentExperiments = sqliteTable(
+  "content_experiments",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    campaignId: text("campaign_id").references(() => campaigns.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    hypothesis: text("hypothesis").notNull(),
+    primaryMetric: text("primary_metric").notNull(),
+    status: text("status").notNull().default("DRAFT"),
+    confidenceThreshold: real("confidence_threshold").notNull().default(0.95),
+    winnerVariationId: text("winner_variation_id").references(
+      () => contentVariations.id,
+      { onDelete: "set null" },
+    ),
+    startedAt: text("started_at"),
+    endedAt: text("ended_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("content_experiments_owner_status_time_idx").on(
+      table.ownerEmail,
+      table.status,
+      table.updatedAt,
+    ),
+    index("content_experiments_product_time_idx").on(
+      table.productId,
+      table.createdAt,
+    ),
+    index("content_experiments_campaign_idx").on(table.campaignId),
+    index("content_experiments_winner_idx").on(table.winnerVariationId),
+  ],
+);
+
+export const experimentVariations = sqliteTable(
+  "experiment_variations",
+  {
+    experimentId: text("experiment_id")
+      .notNull()
+      .references(() => contentExperiments.id, { onDelete: "cascade" }),
+    variationId: text("variation_id")
+      .notNull()
+      .references(() => contentVariations.id, { onDelete: "cascade" }),
+    allocationPercent: real("allocation_percent").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("experiment_variations_experiment_variation_unique").on(
+      table.experimentId,
+      table.variationId,
+    ),
+    index("experiment_variations_variation_idx").on(table.variationId),
+  ],
+);
+
+export const experimentResults = sqliteTable(
+  "experiment_results",
+  {
+    id: text("id").primaryKey(),
+    experimentId: text("experiment_id")
+      .notNull()
+      .references(() => contentExperiments.id, { onDelete: "cascade" }),
+    variationId: text("variation_id")
+      .notNull()
+      .references(() => contentVariations.id, { onDelete: "cascade" }),
+    sampleSize: integer("sample_size").notNull(),
+    clicks: integer("clicks").notNull(),
+    conversions: integer("conversions").notNull(),
+    commission: real("commission").notNull(),
+    conversionRate: real("conversion_rate").notNull(),
+    earningsPerClick: real("earnings_per_click").notNull(),
+    confidence: real("confidence").notNull(),
+    calculatedAt: text("calculated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("experiment_results_experiment_variation_time_unique").on(
+      table.experimentId,
+      table.variationId,
+      table.calculatedAt,
+    ),
+    index("experiment_results_experiment_confidence_idx").on(
+      table.experimentId,
+      table.confidence,
+    ),
+  ],
+);
+
+export const recommendationFeedback = sqliteTable(
+  "recommendation_feedback",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    scoreEvidenceId: text("score_evidence_id").references(
+      () => opportunityScoreEvidence.id,
+      { onDelete: "set null" },
+    ),
+    action: text("action").notNull(),
+    reason: text("reason"),
+    audience: text("audience"),
+    season: text("season"),
+    festival: text("festival"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    recordedAt: text("recorded_at").notNull(),
+  },
+  (table) => [
+    index("recommendation_feedback_owner_action_time_idx").on(
+      table.ownerEmail,
+      table.action,
+      table.recordedAt,
+    ),
+    index("recommendation_feedback_product_time_idx").on(
+      table.productId,
+      table.recordedAt,
+    ),
+    index("recommendation_feedback_score_idx").on(table.scoreEvidenceId),
+  ],
+);
+
+export const learningProfiles = sqliteTable(
+  "learning_profiles",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    dimension: text("dimension").notNull(),
+    dimensionKey: text("dimension_key").notNull(),
+    observationCount: integer("observation_count").notNull(),
+    promotionCount: integer("promotion_count").notNull(),
+    conversionCount: integer("conversion_count").notNull(),
+    conversionRate: real("conversion_rate").notNull(),
+    averageCommission: real("average_commission").notNull(),
+    earningsPerClick: real("earnings_per_click").notNull(),
+    confidence: real("confidence").notNull(),
+    evidenceFrom: text("evidence_from").notNull(),
+    evidenceTo: text("evidence_to").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("learning_profiles_owner_dimension_key_unique").on(
+      table.ownerEmail,
+      table.dimension,
+      table.dimensionKey,
+    ),
+    index("learning_profiles_owner_confidence_idx").on(
+      table.ownerEmail,
+      table.confidence,
+    ),
+  ],
+);
+
+export const scoringWeightVersions = sqliteTable(
+  "scoring_weight_versions",
+  {
+    id: text("id").primaryKey(),
+    version: text("version").notNull(),
+    status: text("status").notNull().default("DRAFT"),
+    weightsJson: text("weights_json").notNull(),
+    evidenceFrom: text("evidence_from").notNull(),
+    evidenceTo: text("evidence_to").notNull(),
+    observationCount: integer("observation_count").notNull(),
+    reason: text("reason").notNull(),
+    previousVersionId: text("previous_version_id"),
+    createdByEmail: text("created_by_email").notNull(),
+    createdAt: text("created_at").notNull(),
+    activatedAt: text("activated_at"),
+    rolledBackAt: text("rolled_back_at"),
+  },
+  (table) => [
+    uniqueIndex("scoring_weight_versions_version_unique").on(table.version),
+    index("scoring_weight_versions_status_time_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const recommendationQualitySnapshots = sqliteTable(
+  "recommendation_quality_snapshots",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    modelVersion: text("model_version").notNull(),
+    recommendationCount: integer("recommendation_count").notNull(),
+    approvalRate: real("approval_rate").notNull(),
+    promotionRate: real("promotion_rate").notNull(),
+    conversionRate: real("conversion_rate").notNull(),
+    averageCommission: real("average_commission").notNull(),
+    confidence: real("confidence").notNull(),
+    windowFrom: text("window_from").notNull(),
+    windowTo: text("window_to").notNull(),
+    calculatedAt: text("calculated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("recommendation_quality_owner_model_window_unique").on(
+      table.ownerEmail,
+      table.modelVersion,
+      table.windowFrom,
+      table.windowTo,
+    ),
+    index("recommendation_quality_owner_time_idx").on(
+      table.ownerEmail,
+      table.calculatedAt,
+    ),
+  ],
+);
+
 export type ProductRecord = typeof products.$inferSelect;
 export type NewProductRecord = typeof products.$inferInsert;
 export type GeneratedContentRecord = typeof generatedContent.$inferSelect;

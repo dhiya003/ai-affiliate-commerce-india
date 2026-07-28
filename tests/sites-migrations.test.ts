@@ -246,3 +246,90 @@ test("Sites migrations create the Phase 3 campaign and attribution foundation", 
     database.close();
   }
 });
+
+test("Sites migrations create the Phase 3 experiment and learning foundation", async () => {
+  const migrationUrls = [
+    new URL("../drizzle/0000_real_pandemic.sql", import.meta.url),
+    new URL("../drizzle/0001_tiresome_kitty_pryde.sql", import.meta.url),
+    new URL("../drizzle/0002_seed_phase1_catalog.sql", import.meta.url),
+    new URL("../drizzle/0003_freezing_titanium_man.sql", import.meta.url),
+    new URL("../drizzle/0004_seed_phase2_policies.sql", import.meta.url),
+    new URL("../drizzle/0005_abandoned_energizer.sql", import.meta.url),
+    new URL(
+      "../drizzle/0006_seed_phase2_ingestion_sources.sql",
+      import.meta.url,
+    ),
+    new URL("../drizzle/0007_worried_doctor_spectrum.sql", import.meta.url),
+    new URL("../drizzle/0008_lying_the_fury.sql", import.meta.url),
+    new URL("../drizzle/0009_giant_sebastian_shaw.sql", import.meta.url),
+    new URL(
+      "../drizzle/0010_seed_phase2_partner_adapters.sql",
+      import.meta.url,
+    ),
+    new URL(
+      "../drizzle/0011_phase3_campaign_tracking_foundation.sql",
+      import.meta.url,
+    ),
+    new URL(
+      "../drizzle/0012_phase3_experiment_learning_foundation.sql",
+      import.meta.url,
+    ),
+  ];
+  const migrations = await Promise.all(
+    migrationUrls.map((url) => readFile(url, "utf8")),
+  );
+  const database = new DatabaseSync(":memory:");
+
+  try {
+    database.exec("PRAGMA foreign_keys = ON;");
+    for (const migration of migrations) database.exec(migration);
+
+    const tables = database
+      .prepare(
+        `SELECT COUNT(*) AS count FROM sqlite_master
+         WHERE type = 'table'
+           AND name IN (
+             'content_experiments',
+             'experiment_variations',
+             'experiment_results',
+             'recommendation_feedback',
+             'learning_profiles',
+             'scoring_weight_versions',
+             'recommendation_quality_snapshots'
+           )`,
+      )
+      .get() as { count: number };
+    assert.equal(tables.count, 7);
+
+    const indexes = database
+      .prepare(
+        `SELECT COUNT(*) AS count FROM sqlite_master
+         WHERE type = 'index'
+           AND tbl_name IN (
+             'content_experiments',
+             'experiment_variations',
+             'experiment_results',
+             'recommendation_feedback',
+             'learning_profiles',
+             'scoring_weight_versions',
+             'recommendation_quality_snapshots'
+           )`,
+      )
+      .get() as { count: number };
+    assert.ok(indexes.count >= 17);
+
+    assert.equal(
+      database.prepare("PRAGMA foreign_key_list('content_experiments')").all()
+        .length,
+      3,
+    );
+    assert.equal(
+      database
+        .prepare("PRAGMA foreign_key_list('recommendation_feedback')")
+        .all().length,
+      2,
+    );
+  } finally {
+    database.close();
+  }
+});

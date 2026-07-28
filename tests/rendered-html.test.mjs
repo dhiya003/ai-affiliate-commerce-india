@@ -85,11 +85,21 @@ test("protects the Phase 2 policy centre", async () => {
   assert.match(anonymous.headers.get("location") ?? "", /signin-with-chatgpt/);
 });
 
+test("protects the Phase 3 experiment workspace", async () => {
+  const anonymous = await render("/experiments");
+  assert.ok([302, 307, 308].includes(anonymous.status));
+  assert.match(anonymous.headers.get("location") ?? "", /signin-with-chatgpt/);
+});
+
 test("protects product API routes without touching storage", async () => {
   for (const path of [
     "/api/products",
     "/api/products/demo/content",
     "/api/policies",
+    "/api/content-variations",
+    "/api/experiments",
+    "/api/feedback",
+    "/api/learning",
   ]) {
     const response = await render(path);
     assert.equal(response.status, 401);
@@ -102,6 +112,28 @@ test("protects product API routes without touching storage", async () => {
     assert.equal(payload.success, false);
     assert.equal(payload.error.code, "AUTHENTICATION_REQUIRED");
   }
+});
+
+test("ships the confidence-gated experiment and learning workspace", async () => {
+  const [workspace, experimentRoute, learningRoute] = await Promise.all([
+    readFile(
+      new URL("../app/experiments/ExperimentsClient.tsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../app/api/experiments/[id]/route.ts", import.meta.url),
+      "utf8",
+    ),
+    readFile(new URL("../app/api/learning/route.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(workspace, /Create content variations/);
+  assert.match(workspace, /Configure an experiment/);
+  assert.match(workspace, /Recommendation feedback/);
+  assert.match(workspace, /Evidence-backed learning profiles/);
+  assert.match(workspace, /silently change scoring weights/);
+  assert.match(experimentRoute, /selectExperimentWinner/);
+  assert.match(learningRoute, /requireRole\(user, \["ADMIN"\]\)/);
 });
 
 test("reports production dependency health without caching", async () => {

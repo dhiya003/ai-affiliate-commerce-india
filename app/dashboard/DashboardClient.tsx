@@ -11,6 +11,7 @@ import {
   CircleHelp,
   Database,
   Flame,
+  FlaskConical,
   LayoutDashboard,
   LoaderCircle,
   Megaphone,
@@ -273,6 +274,7 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
             [Database, "Source operations", "/sources", false],
             [Megaphone, "Campaigns", "/campaigns", false],
             [Activity, "Performance", "/performance", false],
+            [FlaskConical, "Experiments", "/experiments", false],
             [Bookmark, "Saved", "/saved", false],
           ].map(([Icon, label, href, active]) => {
             const NavIcon = Icon as typeof LayoutDashboard;
