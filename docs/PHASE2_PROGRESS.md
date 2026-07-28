@@ -250,11 +250,13 @@ practice`.
 
 ## Next Phase 2 slice
 
-The next repository-controlled target is the Phase 2 release audit, remaining
-priority-defect repair, and release notes. Live marketplace credentials,
-supported partner API access, authenticated transport clients, and enabled
-schedules remain external integration gates; no test fixture or sample value
-is presented as live marketplace evidence.
+The requirement-by-requirement
+[Phase 2 release audit](PHASE2_RELEASE_AUDIT.md) is complete. The next
+repository-controlled target is remaining priority-defect repair and release
+notes. Live marketplace credentials, supported partner API access,
+authenticated transport clients, and enabled schedules remain external
+integration gates; no test fixture or sample value is presented as live
+marketplace evidence.
 
 ## Release
 

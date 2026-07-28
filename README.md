@@ -19,10 +19,14 @@ configuration. The locked first release covers:
 - a production deployment with automated quality checks.
 
 Live marketplace ingestion, policy intelligence, tracking, and optimization are
-delivered incrementally in Phases 2 and 3. Phase 2 has begun with a durable,
-source-backed marketplace policy centre and administrator review workflow. See
-[Phase 2 progress](docs/PHASE2_PROGRESS.md), [Product scope](docs/PRODUCT.md),
-and [Architecture](docs/ARCHITECTURE.md).
+delivered incrementally in Phases 2 and 3. Phase 2 now includes the policy
+centre, normalized ingestion control plane, five marketplace adapter contracts,
+trend/scoring v2, compliance, evidence-aware recommendations, saved/comparison
+workspaces, and source-health alerts. Partner transports remain disabled until
+approved marketplace access is configured. See
+[Phase 2 progress](docs/PHASE2_PROGRESS.md),
+[Phase 2 release audit](docs/PHASE2_RELEASE_AUDIT.md),
+[Product scope](docs/PRODUCT.md), and [Architecture](docs/ARCHITECTURE.md).
 
 Operators should follow [Administrator onboarding](docs/ADMIN_ONBOARDING.md)
 and the evidence-based [Phase 1 launch checklist](docs/PHASE1_LAUNCH_CHECKLIST.md).
