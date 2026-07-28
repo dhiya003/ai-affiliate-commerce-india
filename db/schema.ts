@@ -642,6 +642,299 @@ export const savedProducts = sqliteTable(
   ],
 );
 
+export const creatorAccounts = sqliteTable(
+  "creator_accounts",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    platform: text("platform").notNull(),
+    handle: text("handle").notNull(),
+    displayName: text("display_name"),
+    externalId: text("external_id"),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("creator_accounts_owner_platform_handle_unique").on(
+      table.ownerEmail,
+      table.platform,
+      table.handle,
+    ),
+    index("creator_accounts_owner_active_idx").on(
+      table.ownerEmail,
+      table.isActive,
+    ),
+  ],
+);
+
+export const campaigns = sqliteTable(
+  "campaigns",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    creatorAccountId: text("creator_account_id").references(
+      () => creatorAccounts.id,
+      { onDelete: "set null" },
+    ),
+    name: text("name").notNull(),
+    objective: text("objective").notNull(),
+    channel: text("channel").notNull(),
+    startsAt: text("starts_at"),
+    endsAt: text("ends_at"),
+    budget: real("budget"),
+    currency: text("currency").notNull().default("INR"),
+    status: text("status").notNull().default("DRAFT"),
+    notes: text("notes"),
+    templateName: text("template_name"),
+    duplicatedFromId: text("duplicated_from_id"),
+    archivedAt: text("archived_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("campaigns_owner_status_time_idx").on(
+      table.ownerEmail,
+      table.status,
+      table.updatedAt,
+    ),
+    index("campaigns_owner_channel_time_idx").on(
+      table.ownerEmail,
+      table.channel,
+      table.startsAt,
+    ),
+    index("campaigns_creator_account_idx").on(table.creatorAccountId),
+    index("campaigns_name_idx").on(table.ownerEmail, table.name),
+  ],
+);
+
+export const contentVariations = sqliteTable(
+  "content_variations",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    generatedContentId: text("generated_content_id").references(
+      () => generatedContent.id,
+      { onDelete: "set null" },
+    ),
+    label: text("label").notNull(),
+    hook: text("hook"),
+    caption: text("caption"),
+    cta: text("cta"),
+    hashtagsJson: text("hashtags_json").notNull().default("[]"),
+    audienceAngle: text("audience_angle"),
+    contentLength: text("content_length"),
+    tone: text("tone"),
+    platform: text("platform").notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    isWinner: integer("is_winner", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    archivedAt: text("archived_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("content_variations_owner_product_label_unique").on(
+      table.ownerEmail,
+      table.productId,
+      table.label,
+    ),
+    index("content_variations_product_status_idx").on(
+      table.productId,
+      table.status,
+    ),
+    index("content_variations_content_idx").on(table.generatedContentId),
+  ],
+);
+
+export const promotions = sqliteTable(
+  "promotions",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    campaignId: text("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "restrict" }),
+    generatedContentId: text("generated_content_id").references(
+      () => generatedContent.id,
+      { onDelete: "set null" },
+    ),
+    contentVariationId: text("content_variation_id").references(
+      () => contentVariations.id,
+      { onDelete: "set null" },
+    ),
+    status: text("status").notNull().default("PLANNED"),
+    scheduledAt: text("scheduled_at"),
+    publishedAt: text("published_at"),
+    publishedUrl: text("published_url"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("promotions_owner_status_time_idx").on(
+      table.ownerEmail,
+      table.status,
+      table.updatedAt,
+    ),
+    index("promotions_campaign_time_idx").on(
+      table.campaignId,
+      table.publishedAt,
+    ),
+    index("promotions_product_time_idx").on(table.productId, table.publishedAt),
+    index("promotions_variation_idx").on(table.contentVariationId),
+  ],
+);
+
+export const trackedLinks = sqliteTable(
+  "tracked_links",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    promotionId: text("promotion_id")
+      .notNull()
+      .references(() => promotions.id, { onDelete: "cascade" }),
+    campaignId: text("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    contentVariationId: text("content_variation_id").references(
+      () => contentVariations.id,
+      { onDelete: "set null" },
+    ),
+    marketplace: text("marketplace").notNull(),
+    trackingId: text("tracking_id").notNull(),
+    shortPath: text("short_path").notNull(),
+    destinationUrl: text("destination_url").notNull(),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("tracked_links_tracking_id_unique").on(table.trackingId),
+    uniqueIndex("tracked_links_short_path_unique").on(table.shortPath),
+    index("tracked_links_owner_active_idx").on(
+      table.ownerEmail,
+      table.isActive,
+    ),
+    index("tracked_links_campaign_idx").on(table.campaignId),
+    index("tracked_links_product_idx").on(table.productId),
+  ],
+);
+
+export const clickEvents = sqliteTable(
+  "click_events",
+  {
+    id: text("id").primaryKey(),
+    trackedLinkId: text("tracked_link_id")
+      .notNull()
+      .references(() => trackedLinks.id, { onDelete: "cascade" }),
+    clickedAt: text("clicked_at").notNull(),
+    trafficSource: text("traffic_source"),
+    deviceType: text("device_type").notNull().default("UNKNOWN"),
+    region: text("region"),
+    fingerprintHash: text("fingerprint_hash"),
+    isBot: integer("is_bot", { mode: "boolean" }).notNull().default(false),
+    isDuplicate: integer("is_duplicate", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    suspiciousReason: text("suspicious_reason"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("click_events_link_time_idx").on(
+      table.trackedLinkId,
+      table.clickedAt,
+    ),
+    index("click_events_quality_time_idx").on(
+      table.isBot,
+      table.isDuplicate,
+      table.clickedAt,
+    ),
+    index("click_events_fingerprint_time_idx").on(
+      table.fingerprintHash,
+      table.clickedAt,
+    ),
+  ],
+);
+
+export const conversionEvents = sqliteTable(
+  "conversion_events",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    trackedLinkId: text("tracked_link_id")
+      .notNull()
+      .references(() => trackedLinks.id, { onDelete: "restrict" }),
+    clickEventId: text("click_event_id").references(() => clickEvents.id, {
+      onDelete: "set null",
+    }),
+    marketplace: text("marketplace").notNull(),
+    externalOrderIdHash: text("external_order_id_hash").notNull(),
+    orderStatus: text("order_status").notNull(),
+    orderValue: real("order_value"),
+    currency: text("currency").notNull().default("INR"),
+    convertedAt: text("converted_at").notNull(),
+    importedAt: text("imported_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("conversion_events_marketplace_order_unique").on(
+      table.marketplace,
+      table.externalOrderIdHash,
+    ),
+    index("conversion_events_owner_time_idx").on(
+      table.ownerEmail,
+      table.convertedAt,
+    ),
+    index("conversion_events_link_status_idx").on(
+      table.trackedLinkId,
+      table.orderStatus,
+    ),
+  ],
+);
+
+export const commissionEvents = sqliteTable(
+  "commission_events",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    conversionEventId: text("conversion_event_id")
+      .notNull()
+      .references(() => conversionEvents.id, { onDelete: "cascade" }),
+    marketplace: text("marketplace").notNull(),
+    amount: real("amount").notNull(),
+    currency: text("currency").notNull().default("INR"),
+    status: text("status").notNull(),
+    observedAt: text("observed_at").notNull(),
+    approvedAt: text("approved_at"),
+    importedAt: text("imported_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("commission_events_conversion_status_time_unique").on(
+      table.conversionEventId,
+      table.status,
+      table.observedAt,
+    ),
+    index("commission_events_owner_status_time_idx").on(
+      table.ownerEmail,
+      table.status,
+      table.observedAt,
+    ),
+    index("commission_events_marketplace_time_idx").on(
+      table.marketplace,
+      table.observedAt,
+    ),
+  ],
+);
+
 export type ProductRecord = typeof products.$inferSelect;
 export type NewProductRecord = typeof products.$inferInsert;
 export type GeneratedContentRecord = typeof generatedContent.$inferSelect;

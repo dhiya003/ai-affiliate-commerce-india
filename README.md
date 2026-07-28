@@ -23,10 +23,13 @@ delivered incrementally in Phases 2 and 3. Phase 2 now includes the policy
 centre, normalized ingestion control plane, five marketplace adapter contracts,
 trend/scoring v2, compliance, evidence-aware recommendations, saved/comparison
 workspaces, and source-health alerts. Partner transports remain disabled until
-approved marketplace access is configured. See
+approved marketplace access is configured. Phase 3 has begun with the durable
+campaign, promotion, content-variation, click, conversion, and commission
+foundation plus an owner-scoped campaign workspace. See
 [Phase 2 progress](docs/PHASE2_PROGRESS.md),
 [Phase 2 release audit](docs/PHASE2_RELEASE_AUDIT.md),
 [draft Phase 2 release notes](docs/PHASE2_RELEASE_NOTES.md),
+[Phase 3 progress](docs/PHASE3_PROGRESS.md),
 [Product scope](docs/PRODUCT.md), and [Architecture](docs/ARCHITECTURE.md).
 
 Operators should follow [Administrator onboarding](docs/ADMIN_ONBOARDING.md)

@@ -12,6 +12,7 @@ import {
   Flame,
   LayoutDashboard,
   LoaderCircle,
+  Megaphone,
   Menu,
   PackagePlus,
   Search,
@@ -269,6 +270,7 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
             [WandSparkles, "Content studio", "/products", false],
             [BookOpenCheck, "Policy centre", "/policies", false],
             [Database, "Source operations", "/sources", false],
+            [Megaphone, "Campaigns", "/campaigns", false],
             [Bookmark, "Saved", "/saved", false],
           ].map(([Icon, label, href, active]) => {
             const NavIcon = Icon as typeof LayoutDashboard;

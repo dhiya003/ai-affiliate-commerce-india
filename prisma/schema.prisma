@@ -140,6 +140,57 @@ enum ComplianceSeverity {
   BLOCKING
 }
 
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum CampaignPromotionStatus {
+  PLANNED
+  SCHEDULED
+  PUBLISHED
+  PAUSED
+  FAILED
+  ARCHIVED
+}
+
+enum ContentVariationStatus {
+  ACTIVE
+  WINNER
+  LOSER
+  ARCHIVED
+}
+
+enum TrackingDeviceType {
+  MOBILE
+  TABLET
+  DESKTOP
+  OTHER
+  UNKNOWN
+}
+
+enum AffiliateOrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+  REFUNDED
+}
+
+enum AffiliateCommissionStatus {
+  ESTIMATED
+  PENDING
+  APPROVED
+  PAID
+  REVERSED
+}
+
 model User {
   id              String             @id @default(cuid())
   email           String             @unique
@@ -250,6 +301,9 @@ model Product {
   scoreEvidence        OpportunityScoreEvidence[]
   complianceChecks     ComplianceCheck[]
   savedBy              SavedProduct[]
+  contentVariations    ContentVariation[]
+  campaignPromotions   CampaignPromotion[]
+  trackedLinks         TrackedLink[]
 
   @@unique([marketplaceId, marketplaceProductId])
   @@index([status, isActive])
@@ -300,21 +354,23 @@ model ProductScore {
 }
 
 model GeneratedContent {
-  id               String            @id @default(cuid())
-  productId        String
-  createdById      String
-  kind             ContentKind
-  content          Json
-  promptVersion    String
-  provider         String
-  providerModel    String
-  requestId        String?
-  generationError  String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  product          Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdBy        User              @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  complianceChecks ComplianceCheck[]
+  id                 String              @id @default(cuid())
+  productId          String
+  createdById        String
+  kind               ContentKind
+  content            Json
+  promptVersion      String
+  provider           String
+  providerModel      String
+  requestId          String?
+  generationError    String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  product            Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdBy          User                @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  complianceChecks   ComplianceCheck[]
+  contentVariations  ContentVariation[]
+  campaignPromotions CampaignPromotion[]
 
   @@index([productId, createdAt(sort: Desc)])
   @@index([createdById, createdAt(sort: Desc)])
@@ -754,4 +810,189 @@ model SavedProduct {
 
   @@unique([userEmail, productId])
   @@index([userEmail, createdAt(sort: Desc)])
+}
+
+model CreatorAccount {
+  id          String     @id @default(cuid())
+  ownerEmail  String
+  platform    String
+  handle      String
+  displayName String?
+  externalId  String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  campaigns   Campaign[]
+
+  @@unique([ownerEmail, platform, handle])
+  @@index([ownerEmail, isActive])
+}
+
+model Campaign {
+  id               String              @id @default(cuid())
+  ownerEmail       String
+  creatorAccountId String?
+  name             String
+  objective        String
+  channel          String
+  startsAt         DateTime?
+  endsAt           DateTime?
+  budget           Decimal?            @db.Decimal(14, 2)
+  currency         String              @default("INR") @db.VarChar(3)
+  status           CampaignStatus      @default(DRAFT)
+  notes            String?
+  templateName     String?
+  duplicatedFromId String?
+  archivedAt       DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  creatorAccount   CreatorAccount?     @relation(fields: [creatorAccountId], references: [id], onDelete: SetNull)
+  duplicatedFrom   Campaign?           @relation("CampaignDuplicates", fields: [duplicatedFromId], references: [id], onDelete: SetNull)
+  duplicates       Campaign[]          @relation("CampaignDuplicates")
+  promotions       CampaignPromotion[]
+  trackedLinks     TrackedLink[]
+
+  @@index([ownerEmail, status, updatedAt(sort: Desc)])
+  @@index([ownerEmail, channel, startsAt(sort: Desc)])
+  @@index([ownerEmail, name])
+  @@index([creatorAccountId])
+}
+
+model ContentVariation {
+  id                 String                 @id @default(cuid())
+  ownerEmail         String
+  productId          String
+  generatedContentId String?
+  label              String
+  hook               String?
+  caption            String?
+  cta                String?
+  hashtags           Json                   @default("[]")
+  audienceAngle      String?
+  contentLength      String?
+  tone               String?
+  platform           String
+  status             ContentVariationStatus @default(ACTIVE)
+  isWinner           Boolean                @default(false)
+  archivedAt         DateTime?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  product            Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  generatedContent   GeneratedContent?      @relation(fields: [generatedContentId], references: [id], onDelete: SetNull)
+  promotions         CampaignPromotion[]
+  trackedLinks       TrackedLink[]
+
+  @@unique([ownerEmail, productId, label])
+  @@index([productId, status])
+  @@index([generatedContentId])
+}
+
+model CampaignPromotion {
+  id                 String                  @id @default(cuid())
+  ownerEmail         String
+  campaignId         String
+  productId          String
+  generatedContentId String?
+  contentVariationId String?
+  status             CampaignPromotionStatus @default(PLANNED)
+  scheduledAt        DateTime?
+  publishedAt        DateTime?
+  publishedUrl       String?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  campaign           Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  product            Product                 @relation(fields: [productId], references: [id], onDelete: Restrict)
+  generatedContent   GeneratedContent?       @relation(fields: [generatedContentId], references: [id], onDelete: SetNull)
+  contentVariation   ContentVariation?       @relation(fields: [contentVariationId], references: [id], onDelete: SetNull)
+  trackedLinks       TrackedLink[]
+
+  @@index([ownerEmail, status, updatedAt(sort: Desc)])
+  @@index([campaignId, publishedAt(sort: Desc)])
+  @@index([productId, publishedAt(sort: Desc)])
+  @@index([contentVariationId])
+}
+
+model TrackedLink {
+  id                 String            @id @default(cuid())
+  ownerEmail         String
+  promotionId        String
+  campaignId         String
+  productId          String
+  contentVariationId String?
+  marketplace        String
+  trackingId         String            @unique
+  shortPath          String            @unique
+  destinationUrl     String
+  isActive           Boolean           @default(true)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  promotion          CampaignPromotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  campaign           Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  product            Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  contentVariation   ContentVariation? @relation(fields: [contentVariationId], references: [id], onDelete: SetNull)
+  clicks             ClickEvent[]
+  conversions        ConversionEvent[]
+
+  @@index([ownerEmail, isActive])
+  @@index([campaignId])
+  @@index([productId])
+}
+
+model ClickEvent {
+  id               String             @id @default(cuid())
+  trackedLinkId    String
+  clickedAt        DateTime           @default(now())
+  trafficSource    String?
+  deviceType       TrackingDeviceType @default(UNKNOWN)
+  region           String?
+  fingerprintHash  String?
+  isBot            Boolean            @default(false)
+  isDuplicate      Boolean            @default(false)
+  suspiciousReason String?
+  createdAt        DateTime           @default(now())
+  trackedLink      TrackedLink        @relation(fields: [trackedLinkId], references: [id], onDelete: Cascade)
+  conversions      ConversionEvent[]
+
+  @@index([trackedLinkId, clickedAt(sort: Desc)])
+  @@index([isBot, isDuplicate, clickedAt(sort: Desc)])
+  @@index([fingerprintHash, clickedAt(sort: Desc)])
+}
+
+model ConversionEvent {
+  id                  String               @id @default(cuid())
+  ownerEmail          String
+  trackedLinkId       String
+  clickEventId        String?
+  marketplace         String
+  externalOrderIdHash String
+  orderStatus         AffiliateOrderStatus
+  orderValue          Decimal?             @db.Decimal(14, 2)
+  currency            String               @default("INR") @db.VarChar(3)
+  convertedAt         DateTime
+  importedAt          DateTime             @default(now())
+  trackedLink         TrackedLink          @relation(fields: [trackedLinkId], references: [id], onDelete: Restrict)
+  clickEvent          ClickEvent?          @relation(fields: [clickEventId], references: [id], onDelete: SetNull)
+  commissions         CommissionEvent[]
+
+  @@unique([marketplace, externalOrderIdHash])
+  @@index([ownerEmail, convertedAt(sort: Desc)])
+  @@index([trackedLinkId, orderStatus])
+}
+
+model CommissionEvent {
+  id                String                    @id @default(cuid())
+  ownerEmail        String
+  conversionEventId String
+  marketplace       String
+  amount            Decimal                   @db.Decimal(14, 2)
+  currency          String                    @default("INR") @db.VarChar(3)
+  status            AffiliateCommissionStatus
+  observedAt        DateTime
+  approvedAt        DateTime?
+  importedAt        DateTime                  @default(now())
+  conversionEvent   ConversionEvent           @relation(fields: [conversionEventId], references: [id], onDelete: Cascade)
+
+  @@unique([conversionEventId, status, observedAt])
+  @@index([ownerEmail, status, observedAt(sort: Desc)])
+  @@index([marketplace, observedAt(sort: Desc)])
 }

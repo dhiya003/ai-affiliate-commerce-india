@@ -151,3 +151,98 @@ test("Sites migrations produce seeded Phase 2 ingestion sources", async () => {
     database.close();
   }
 });
+
+test("Sites migrations create the Phase 3 campaign and attribution foundation", async () => {
+  const migrationUrls = [
+    new URL("../drizzle/0000_real_pandemic.sql", import.meta.url),
+    new URL("../drizzle/0001_tiresome_kitty_pryde.sql", import.meta.url),
+    new URL("../drizzle/0002_seed_phase1_catalog.sql", import.meta.url),
+    new URL("../drizzle/0003_freezing_titanium_man.sql", import.meta.url),
+    new URL("../drizzle/0004_seed_phase2_policies.sql", import.meta.url),
+    new URL("../drizzle/0005_abandoned_energizer.sql", import.meta.url),
+    new URL(
+      "../drizzle/0006_seed_phase2_ingestion_sources.sql",
+      import.meta.url,
+    ),
+    new URL("../drizzle/0007_worried_doctor_spectrum.sql", import.meta.url),
+    new URL("../drizzle/0008_lying_the_fury.sql", import.meta.url),
+    new URL("../drizzle/0009_giant_sebastian_shaw.sql", import.meta.url),
+    new URL(
+      "../drizzle/0010_seed_phase2_partner_adapters.sql",
+      import.meta.url,
+    ),
+    new URL(
+      "../drizzle/0011_phase3_campaign_tracking_foundation.sql",
+      import.meta.url,
+    ),
+  ];
+  const migrations = await Promise.all(
+    migrationUrls.map((url) => readFile(url, "utf8")),
+  );
+  const database = new DatabaseSync(":memory:");
+
+  try {
+    database.exec("PRAGMA foreign_keys = ON;");
+    for (const migration of migrations) database.exec(migration);
+
+    const tables = database
+      .prepare(
+        `SELECT name FROM sqlite_master
+         WHERE type = 'table'
+           AND name IN (
+             'creator_accounts',
+             'campaigns',
+             'content_variations',
+             'promotions',
+             'tracked_links',
+             'click_events',
+             'conversion_events',
+             'commission_events'
+           )
+         ORDER BY name`,
+      )
+      .all() as Array<{ name: string }>;
+    assert.deepEqual(
+      tables.map(({ name }) => name),
+      [
+        "campaigns",
+        "click_events",
+        "commission_events",
+        "content_variations",
+        "conversion_events",
+        "creator_accounts",
+        "promotions",
+        "tracked_links",
+      ],
+    );
+
+    const indexes = database
+      .prepare(
+        `SELECT COUNT(*) AS count FROM sqlite_master
+         WHERE type = 'index'
+           AND tbl_name IN (
+             'creator_accounts',
+             'campaigns',
+             'content_variations',
+             'promotions',
+             'tracked_links',
+             'click_events',
+             'conversion_events',
+             'commission_events'
+           )`,
+      )
+      .get() as { count: number };
+    assert.ok(indexes.count >= 27);
+
+    const trackedLinkForeignKeys = database
+      .prepare("PRAGMA foreign_key_list('tracked_links')")
+      .all();
+    const promotionForeignKeys = database
+      .prepare("PRAGMA foreign_key_list('promotions')")
+      .all();
+    assert.equal(trackedLinkForeignKeys.length, 4);
+    assert.equal(promotionForeignKeys.length, 4);
+  } finally {
+    database.close();
+  }
+});
