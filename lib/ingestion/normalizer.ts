@@ -78,6 +78,7 @@ export class ManualSourceAdapter implements ProductSourceAdapter<SourceRecord> {
       sourceTimestamp: record.sourceTimestamp,
       availabilityStatus: record.availabilityStatus,
       confidence: record.confidence,
+      sourceAttributes: {},
     };
   }
 }

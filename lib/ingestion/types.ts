@@ -36,6 +36,11 @@ export interface NormalizedProduct {
   sourceTimestamp: string;
   availabilityStatus: AvailabilityStatus;
   confidence: number;
+  sourceAttributes: Record<string, unknown>;
+}
+
+export interface MarketplaceFeedClient<T> {
+  fetchProducts(signal?: AbortSignal): Promise<readonly T[]>;
 }
 
 export interface ProductSourceAdapter<T = unknown> {

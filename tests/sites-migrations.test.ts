@@ -70,6 +70,10 @@ test("Sites migrations produce seeded Phase 2 ingestion sources", async () => {
     new URL("../drizzle/0007_worried_doctor_spectrum.sql", import.meta.url),
     new URL("../drizzle/0008_lying_the_fury.sql", import.meta.url),
     new URL("../drizzle/0009_giant_sebastian_shaw.sql", import.meta.url),
+    new URL(
+      "../drizzle/0010_seed_phase2_partner_adapters.sql",
+      import.meta.url,
+    ),
   ];
   const migrations = await Promise.all(
     migrationUrls.map((url) => readFile(url, "utf8")),
@@ -89,16 +93,25 @@ test("Sites migrations produce seeded Phase 2 ingestion sources", async () => {
       source_type: string;
       status: string;
     }>;
-    assert.equal(sources.length, 5);
-    assert.ok(sources.every((source) => source.source_type === "MANUAL"));
-    assert.ok(sources.every((source) => source.status === "READY"));
+    assert.equal(sources.length, 10);
+    assert.equal(
+      sources.filter((source) => source.source_type === "MANUAL").length,
+      5,
+    );
+    assert.equal(
+      sources.filter(
+        (source) =>
+          source.source_type === "API" && source.status === "DISABLED",
+      ).length,
+      5,
+    );
 
     const schedules = database
       .prepare(
         "SELECT COUNT(*) AS count, SUM(enabled) AS enabled FROM ingestion_schedules",
       )
       .get() as { count: number; enabled: number };
-    assert.equal(schedules.count, 5);
+    assert.equal(schedules.count, 10);
     assert.equal(schedules.enabled, 0);
 
     const intelligenceTables = database

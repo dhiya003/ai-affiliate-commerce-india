@@ -43,7 +43,7 @@ runtime evidence.
 - The PostgreSQL seed produced five marketplace rules and at least one record
   in every other policy model while preserving all 50 products.
 - A second PostgreSQL seed run left all aggregate counts unchanged.
-- The complete repository quality gate passes 62 checks, including the
+- The complete repository quality gate passes 68 checks, including the
   production build, authentication boundaries, model coverage, sources, and
   administrator audit workflow.
 
@@ -71,15 +71,16 @@ runtime evidence.
 
 ## Ingestion validation evidence
 
-- All seven forward-only D1 ingestion tables and five marketplace source and
-  schedule seeds apply after the existing catalogue and policy migrations.
+- All seven forward-only D1 ingestion tables, five manual sources, five
+  disabled partner sources, and their schedules apply after the existing
+  catalogue and policy migrations.
 - The isolated PostgreSQL 16 verification applied all three migrations and
   seeded twice without count drift.
 - PostgreSQL aggregate evidence after the second seed:
-  `5 marketplaces | 5 sources | 5 schedules | 50 products | 5 marketplace
+  `5 marketplaces | 10 sources | 10 schedules | 50 products | 5 marketplace
 rules | 2 commission rules | 1 content policy | 1 disclosure | 1 prohibited
 practice`.
-- The complete repository quality gate passes 62 checks, including ingestion
+- The complete repository quality gate passes 68 checks, including ingestion
   schemas, normalization, canonical-key stability, confidence thresholds,
   freshness, retry backoff, and D1 seed execution.
 
@@ -117,7 +118,7 @@ practice`.
 - Unit coverage verifies window membership, expiry, source confidence,
   spike detection, v2 net commission, penalties, and marketplace/category
   multipliers.
-- The complete repository quality gate passes 62 checks.
+- The complete repository quality gate passes 68 checks.
 
 ## Compliance engine
 
@@ -146,7 +147,7 @@ practice`.
 - Unit coverage verifies compliant content, price and discount mismatches,
   missing disclosure, prohibited and unsupported claims, exact-product
   identity, and colour matching.
-- The complete repository quality gate passes 62 checks.
+- The complete repository quality gate passes 68 checks.
 
 ## Recommendation experience
 
@@ -180,16 +181,54 @@ practice`.
 - The production build includes protected `/saved`, `/compare`, and
   `/api/saved-products` routes.
 - Query validation covers all six recommendation view contracts.
-- The complete repository quality gate passes 62 checks.
+- The complete repository quality gate passes 68 checks.
+
+## Marketplace partner adapter contracts
+
+- [x] Shared injected feed-client boundary so transport and partner
+      authentication remain separate from marketplace normalization.
+- [x] Amazon adapter with ASIN validation, Amazon-domain enforcement, pricing,
+      seller, rating, availability, commission, and affiliate-link mapping.
+- [x] Flipkart adapter with FSN, marketplace-domain, seller, pricing, rating,
+      availability, commission, and affiliate-link mapping.
+- [x] Meesho adapter with supplier, delivery window, return window, combo/unit
+      price, variation availability, commission, and affiliate-link mapping.
+- [x] Myntra and AJIO fashion adapters with style identifiers, size and colour
+      variations, variation availability, price/MRP discount consistency,
+      commission, and affiliate-link mapping.
+- [x] HTTPS and marketplace-domain allowlists prevent cross-marketplace links
+      from entering the normalized product contract.
+- [x] Invalid price pairs, inconsistent discounts, and product/variation
+      availability conflicts are rejected before ingestion.
+- [x] Source-specific evidence is retained in `sourceAttributes` instead of
+      being discarded during normalization.
+- [x] Five partner API sources and schedules exist in D1 and PostgreSQL but are
+      explicitly disabled until real partner access and credentials are
+      configured.
+
+## Adapter validation evidence
+
+- Six adapter tests cover valid normalization and invalid-domain, price,
+  discount, and availability failure paths across all five marketplaces.
+- The forward-only D1 seed adds one disabled API source and disabled schedule
+  per marketplace while preserving the five existing manual sources.
+- A fresh PostgreSQL 16 database applied all six migrations and seeded twice
+  without count drift.
+- PostgreSQL aggregate evidence after the second seed:
+  `5 marketplaces | 10 sources | 5 manual READY | 5 API DISABLED |
+10 disabled schedules | 50 products`.
+- The complete repository quality gate passes 68 checks, including formatting,
+  lint, strict type checks, production build, route tests, all prior Phase 1
+  and Phase 2 coverage, and the six new adapter contracts.
 
 ## Next Phase 2 slice
 
 The next repository-controlled target is Phase 2 release hardening: integration
-alerts, freshness indicators, adapter/source failure scenarios, affiliate-link
-validation, release notes, and the remaining credential-independent adapter
-contracts. Live marketplace credentials, supported partner API access,
-production adapters, and enabled schedules remain external integration gates;
-no sample value is presented as live marketplace evidence.
+alerts, freshness indicators, source failure scenarios, affiliate-link
+validation, and release notes. Live marketplace credentials, supported partner
+API access, authenticated transport clients, and enabled schedules remain
+external integration gates; no test fixture or sample value is presented as
+live marketplace evidence.
 
 ## Release
 

@@ -4,6 +4,7 @@ import {
   PrismaClient,
   ProductWorkflowStatus,
   ReturnRisk,
+  SourceStatus,
   SourceType,
   StockStatus,
   UserRole,
@@ -75,6 +76,37 @@ async function main() {
       update: { cadenceMinutes: 720 },
       create: {
         sourceId: source.id,
+        cadenceMinutes: 720,
+        enabled: false,
+      },
+    });
+
+    const partnerSource = await prisma.productSource.upsert({
+      where: {
+        marketplaceId_name: {
+          marketplaceId: marketplace.id,
+          name: `${marketplace.name} partner adapter`,
+        },
+      },
+      update: {
+        sourceType: SourceType.API,
+        status: SourceStatus.DISABLED,
+        freshnessWindowMinutes: 720,
+      },
+      create: {
+        marketplaceId: marketplace.id,
+        name: `${marketplace.name} partner adapter`,
+        sourceType: SourceType.API,
+        status: SourceStatus.DISABLED,
+        freshnessWindowMinutes: 720,
+      },
+    });
+
+    await prisma.ingestionSchedule.upsert({
+      where: { sourceId: partnerSource.id },
+      update: { cadenceMinutes: 720, enabled: false },
+      create: {
+        sourceId: partnerSource.id,
         cadenceMinutes: 720,
         enabled: false,
       },

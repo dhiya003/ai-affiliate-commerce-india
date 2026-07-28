@@ -71,6 +71,13 @@
       "when": 1785269303264,
       "tag": "0009_giant_sebastian_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1785269726138,
+      "tag": "0010_seed_phase2_partner_adapters",
+      "breakpoints": true
     }
   ]
 }
