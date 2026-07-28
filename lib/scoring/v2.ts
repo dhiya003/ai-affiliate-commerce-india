@@ -5,6 +5,28 @@ export const SCORE_VERSION_V2 = "v2.0.0";
 
 const factorSchema = z.number().finite().min(0).max(100).nullable().optional();
 
+export const BASE_WEIGHTS = {
+  ratingScore: 0.07,
+  reviewGrowthScore: 0.08,
+  demandScore: 0.11,
+  trendScore: 0.11,
+  commissionScore: 0.1,
+  sellerReliabilityScore: 0.07,
+  saturationScore: 0.06,
+  viralityScore: 0.08,
+  priceBandScore: 0.05,
+  categoryConversionScore: 0.06,
+  festivalRelevanceScore: 0.04,
+  targetAudienceSizeScore: 0.05,
+  visualAppealScore: 0.04,
+  urgencyScore: 0.04,
+  stockStabilityScore: 0.04,
+} as const;
+
+export const SCORING_FACTOR_NAMES = Object.keys(BASE_WEIGHTS) as Array<
+  keyof typeof BASE_WEIGHTS
+>;
+
 export const productScoringV2InputSchema = z.object({
   productId: z.string().trim().min(1),
   marketplace: z.enum(["Amazon", "Flipkart", "Meesho", "Myntra", "AJIO"]),
@@ -27,29 +49,15 @@ export const productScoringV2InputSchema = z.object({
   urgencyScore: factorSchema,
   stockStabilityScore: factorSchema,
   sourceConfidence: z.number().finite().min(0).max(1),
+  modelVersion: z.string().trim().min(1).max(80).optional(),
+  factorWeights: z
+    .record(z.string(), z.number().finite().positive().max(1))
+    .optional(),
   marketplaceWeights: z.record(z.string(), z.number().positive()).optional(),
   categoryWeights: z.record(z.string(), z.number().positive()).optional(),
 });
 
 export type ProductScoringV2Input = z.infer<typeof productScoringV2InputSchema>;
-
-const BASE_WEIGHTS = {
-  ratingScore: 0.07,
-  reviewGrowthScore: 0.08,
-  demandScore: 0.11,
-  trendScore: 0.11,
-  commissionScore: 0.1,
-  sellerReliabilityScore: 0.07,
-  saturationScore: 0.06,
-  viralityScore: 0.08,
-  priceBandScore: 0.05,
-  categoryConversionScore: 0.06,
-  festivalRelevanceScore: 0.04,
-  targetAudienceSizeScore: 0.05,
-  visualAppealScore: 0.04,
-  urgencyScore: 0.04,
-  stockStabilityScore: 0.04,
-} as const;
 
 type FactorName = keyof typeof BASE_WEIGHTS;
 
@@ -96,7 +104,7 @@ export function calculateOpportunityScoreV2(rawInput: ProductScoringV2Input) {
     Object.entries(BASE_WEIGHTS).map(([factor, baseWeight]) => [
       factor,
       round(
-        baseWeight *
+        (input.factorWeights?.[factor] ?? baseWeight) *
           (input.marketplaceWeights?.[factor] ?? 1) *
           (input.categoryWeights?.[factor] ?? 1),
         4,
@@ -156,7 +164,7 @@ export function calculateOpportunityScoreV2(rawInput: ProductScoringV2Input) {
 
   return {
     productId: input.productId,
-    version: SCORE_VERSION_V2,
+    version: input.modelVersion ?? SCORE_VERSION_V2,
     opportunityScore,
     grossCommissionEstimate,
     netCommissionEstimate,
@@ -170,7 +178,7 @@ export function calculateOpportunityScoreV2(rawInput: ProductScoringV2Input) {
       returnRiskPenalty,
     },
     explanation: {
-      summary: `Opportunity score ${opportunityScore}/100 using evidence-backed ${SCORE_VERSION_V2}.`,
+      summary: `Opportunity score ${opportunityScore}/100 using evidence-backed ${input.modelVersion ?? SCORE_VERSION_V2}.`,
       strongestFactors: contributions.slice(0, 3).map(({ factor }) => factor),
       cautions: [
         ...(missingFactors.length

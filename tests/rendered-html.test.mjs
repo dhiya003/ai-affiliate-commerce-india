@@ -91,6 +91,12 @@ test("protects the Phase 3 experiment workspace", async () => {
   assert.match(anonymous.headers.get("location") ?? "", /signin-with-chatgpt/);
 });
 
+test("protects the administrator scoring-governance workspace", async () => {
+  const anonymous = await render("/optimization");
+  assert.ok([302, 307, 308].includes(anonymous.status));
+  assert.match(anonymous.headers.get("location") ?? "", /signin-with-chatgpt/);
+});
+
 test("protects product API routes without touching storage", async () => {
   for (const path of [
     "/api/products",
@@ -100,6 +106,8 @@ test("protects product API routes without touching storage", async () => {
     "/api/experiments",
     "/api/feedback",
     "/api/learning",
+    "/api/optimization/weights",
+    "/api/optimization/quality",
   ]) {
     const response = await render(path);
     assert.equal(response.status, 401);
@@ -112,6 +120,18 @@ test("protects product API routes without touching storage", async () => {
     assert.equal(payload.success, false);
     assert.equal(payload.error.code, "AUTHENTICATION_REQUIRED");
   }
+});
+
+test("ships versioned scoring governance and quality controls", async () => {
+  const workspace = await readFile(
+    new URL("../app/optimization/OptimizationClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(workspace, /Create a scoring-weight draft/);
+  assert.match(workspace, /Quality evidence/);
+  assert.match(workspace, /Activate after gate/);
+  assert.match(workspace, /Roll back/);
+  assert.match(workspace, /no\s+material degradation/);
 });
 
 test("ships the confidence-gated experiment and learning workspace", async () => {

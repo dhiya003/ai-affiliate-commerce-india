@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api/errors";
+import { getActiveScoringConfiguration } from "@/lib/optimization/repository";
 import { getProduct } from "@/lib/products/repository";
 import { calculateOpportunityScoreV2 } from "@/lib/scoring/v2";
 import { assessTrendSignals } from "./engine.ts";
@@ -119,6 +120,10 @@ export async function recordProductTrendSignals(
     assessment.sevenDay.confidence,
     assessment.thirtyDay.confidence,
   );
+  const scoringConfiguration = await getActiveScoringConfiguration(
+    product.marketplace,
+    product.category,
+  );
   const score = calculateOpportunityScoreV2({
     productId,
     marketplace: product.marketplace,
@@ -170,6 +175,10 @@ export async function recordProductTrendSignals(
             ? 0
             : null,
     sourceConfidence,
+    modelVersion: scoringConfiguration?.modelVersion,
+    factorWeights: scoringConfiguration?.factorWeights,
+    marketplaceWeights: scoringConfiguration?.marketplaceWeights,
+    categoryWeights: scoringConfiguration?.categoryWeights,
   });
 
   await db.batch([

@@ -20,6 +20,7 @@ import {
   Search,
   Settings,
   ShoppingBag,
+  SlidersHorizontal,
   Sparkles,
   Star,
   TrendingUp,
@@ -275,6 +276,7 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
             [Megaphone, "Campaigns", "/campaigns", false],
             [Activity, "Performance", "/performance", false],
             [FlaskConical, "Experiments", "/experiments", false],
+            [SlidersHorizontal, "Scoring governance", "/optimization", false],
             [Bookmark, "Saved", "/saved", false],
           ].map(([Icon, label, href, active]) => {
             const NavIcon = Icon as typeof LayoutDashboard;

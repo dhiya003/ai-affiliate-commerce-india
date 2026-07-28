@@ -63,7 +63,7 @@ runtime evidence.
   lifecycle actions, and unbounded filters.
 - Campaign repository and API tests verify owner-scoped reads and mutations,
   authenticated identity, and server-side validation.
-- The complete repository quality gate passes 99 checks, including formatting,
+- The complete repository quality gate passes 107 checks, including formatting,
   lint, strict type checks, the production build, migration execution, schema
   privacy invariants, and all prior Phase 1 and Phase 2 coverage.
 
@@ -112,7 +112,7 @@ runtime evidence.
   imports, lifecycle states, owner scoping, date ranges, and aggregation shape.
 - The production build contains campaign promotion, public tracked redirect,
   performance read, attribution import, and signed-in dashboard routes.
-- The complete repository quality gate passes 99 checks.
+- The complete repository quality gate passes 107 checks.
 
 ## Content experiments and learning
 
@@ -154,14 +154,50 @@ proven without conversion evidence.
   administrator-only refresh.
 - The production build includes all four experiment/learning APIs and the
   signed-in workspace.
-- The complete repository quality gate passes 99 checks.
+- The complete repository quality gate passes 107 checks.
+
+## Governed scoring optimization
+
+- [x] Versioned factor, marketplace, and category scoring-weight configuration.
+- [x] Semantic version, normalized factor total, multiplier bounds, evidence
+      range, observation count, and explanation validation.
+- [x] Administrator-only draft creation, activation, and rollback APIs.
+- [x] Draft quality backtesting over historical factor breakdowns and linked
+      recommendation outcomes without changing live scores.
+- [x] Recommendation-quality snapshots for approval, promotion, successful
+      outcome, commission, evidence count, and confidence.
+- [x] Activation requires a matching quality snapshot, at least 20 evaluated
+      recommendations, at least 30 percent evidence confidence, and no more than
+      10 percent composite degradation against the active baseline.
+- [x] One-step rollback restores the prior active version and records rollback
+      time.
+- [x] Active factor and marketplace/category multipliers are applied by new
+      evidence-backed scoring runs.
+- [x] New opportunity-score evidence records the exact active model version.
+- [x] Administrator workspace at `/optimization` exposes drafts, evidence,
+      activation state, and rollback.
+
+No automatic process can activate scoring weights. Scheduled retraining may
+prepare a draft and quality evidence, but administrator activation remains a
+separate explicit action.
+
+## Scoring-governance validation evidence
+
+- Validators reject malformed versions, non-normalized factors, out-of-range
+  marketplace/category multipliers, and reversed evidence windows.
+- Tests prove active factor weights change calculated contributions and persist
+  their model version in score output.
+- Repository tests cover the quality, sample-size, confidence, baseline,
+  degradation, and rollback gates.
+- The production build includes the administrator workspace and all three
+  scoring-governance API routes.
+- The complete repository quality gate passes 107 checks.
 
 ## Next Phase 3 slice
 
-The next target is governed scoring-weight experimentation, recommendation
-quality snapshots, and scheduled optimization jobs. Automatic production
-weight changes remain intentionally disabled until a proposed version has
-evidence, comparison results, administrator approval, and rollback support.
+The next target is the scheduled automation control plane: score retraining,
+daily ingestion and refresh orchestration, dependency-aware execution, retry
+and timeout policy, health monitoring, processing logs, and manual reruns.
 
 ## Release
 
