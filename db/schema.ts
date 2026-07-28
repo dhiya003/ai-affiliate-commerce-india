@@ -537,6 +537,92 @@ export const opportunityScoreEvidence = sqliteTable(
   ],
 );
 
+export const complianceChecks = sqliteTable(
+  "compliance_checks",
+  {
+    id: text("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    generatedContentId: text("generated_content_id").references(
+      () => generatedContent.id,
+      { onDelete: "set null" },
+    ),
+    marketplace: text("marketplace").notNull(),
+    status: text("status").notNull(),
+    highestSeverity: text("highest_severity").notNull(),
+    contentHash: text("content_hash").notNull(),
+    checkedByEmail: text("checked_by_email").notNull(),
+    checkedAt: text("checked_at").notNull(),
+    overriddenAt: text("overridden_at"),
+    overriddenByEmail: text("overridden_by_email"),
+    overrideReason: text("override_reason"),
+  },
+  (table) => [
+    index("compliance_checks_product_time_idx").on(
+      table.productId,
+      table.checkedAt,
+    ),
+    index("compliance_checks_status_severity_idx").on(
+      table.status,
+      table.highestSeverity,
+    ),
+    index("compliance_checks_content_idx").on(table.generatedContentId),
+  ],
+);
+
+export const complianceCheckResults = sqliteTable(
+  "compliance_check_results",
+  {
+    id: text("id").primaryKey(),
+    checkId: text("check_id")
+      .notNull()
+      .references(() => complianceChecks.id, { onDelete: "cascade" }),
+    ruleCode: text("rule_code").notNull(),
+    status: text("status").notNull(),
+    severity: text("severity").notNull(),
+    message: text("message").notNull(),
+    fixSuggestion: text("fix_suggestion"),
+    evidenceJson: text("evidence_json").notNull().default("{}"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("compliance_results_check_rule_unique").on(
+      table.checkId,
+      table.ruleCode,
+    ),
+    index("compliance_results_status_severity_idx").on(
+      table.status,
+      table.severity,
+    ),
+  ],
+);
+
+export const complianceOverrides = sqliteTable(
+  "compliance_overrides",
+  {
+    id: text("id").primaryKey(),
+    checkId: text("check_id")
+      .notNull()
+      .references(() => complianceChecks.id, { onDelete: "cascade" }),
+    fromStatus: text("from_status").notNull(),
+    toStatus: text("to_status").notNull(),
+    reason: text("reason").notNull(),
+    overriddenByEmail: text("overridden_by_email").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("compliance_overrides_check_time_idx").on(
+      table.checkId,
+      table.createdAt,
+    ),
+    index("compliance_overrides_actor_time_idx").on(
+      table.overriddenByEmail,
+      table.createdAt,
+    ),
+  ],
+);
+
 export type ProductRecord = typeof products.$inferSelect;
 export type NewProductRecord = typeof products.$inferInsert;
 export type GeneratedContentRecord = typeof generatedContent.$inferSelect;

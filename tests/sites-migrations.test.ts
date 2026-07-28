@@ -68,6 +68,7 @@ test("Sites migrations produce seeded Phase 2 ingestion sources", async () => {
       import.meta.url,
     ),
     new URL("../drizzle/0007_worried_doctor_spectrum.sql", import.meta.url),
+    new URL("../drizzle/0008_lying_the_fury.sql", import.meta.url),
   ];
   const migrations = await Promise.all(
     migrationUrls.map((url) => readFile(url, "utf8")),
@@ -111,6 +112,19 @@ test("Sites migrations produce seeded Phase 2 ingestion sources", async () => {
       )
       .get() as { count: number };
     assert.equal(intelligenceTables.count, 3);
+
+    const complianceTables = database
+      .prepare(
+        `SELECT COUNT(*) AS count FROM sqlite_master
+         WHERE type = 'table'
+           AND name IN (
+             'compliance_checks',
+             'compliance_check_results',
+             'compliance_overrides'
+           )`,
+      )
+      .get() as { count: number };
+    assert.equal(complianceTables.count, 3);
   } finally {
     database.close();
   }

@@ -7,6 +7,9 @@ import type { ContentBundle, GeneratedContent } from "@/lib/content/schema";
 interface ContentStudioProps {
   productId: string;
   initialContent: GeneratedContent | null;
+  exportBlocked?: boolean;
+  complianceMessage?: string | null;
+  onGenerated?: () => void;
 }
 
 interface ApiEnvelope<T> {
@@ -92,6 +95,9 @@ function sections(bundle: ContentBundle): ContentSection[] {
 export function ContentStudio({
   productId,
   initialContent,
+  exportBlocked = false,
+  complianceMessage = null,
+  onGenerated,
 }: ContentStudioProps) {
   const [generated, setGenerated] = useState(initialContent);
   const [generating, setGenerating] = useState(false);
@@ -112,6 +118,7 @@ export function ContentStudio({
         );
       }
       setGenerated(result.data);
+      onGenerated?.();
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -181,6 +188,16 @@ export function ContentStudio({
         </div>
       ) : null}
 
+      {exportBlocked ? (
+        <div
+          role="alert"
+          className="mt-5 rounded-xl border border-[#f0b8aa]/40 bg-[#7d3127]/35 p-4 text-sm text-[#ffe0d8]"
+        >
+          {complianceMessage ??
+            "Export is blocked until severe compliance violations are fixed or an administrator records an override."}
+        </div>
+      ) : null}
+
       {generated ? (
         <>
           <div className="mt-7 grid gap-3 md:grid-cols-2">
@@ -198,6 +215,7 @@ export function ContentStudio({
                   <button
                     type="button"
                     onClick={() => copy(section.key, section.value)}
+                    disabled={exportBlocked}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] font-bold text-[#d9e8dc] hover:bg-white/10"
                   >
                     {copied === section.key ? (

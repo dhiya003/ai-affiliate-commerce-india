@@ -126,6 +126,20 @@ enum TrendDirection {
   DECAYING
 }
 
+enum ComplianceStatus {
+  PASS
+  WARNING
+  FAIL
+  OVERRIDDEN
+}
+
+enum ComplianceSeverity {
+  INFO
+  WARNING
+  HIGH
+  BLOCKING
+}
+
 model User {
   id              String             @id @default(cuid())
   email           String             @unique
@@ -234,6 +248,7 @@ model Product {
   trendSignals         TrendSignal[]
   sourceTrendScores    SourceTrendScore[]
   scoreEvidence        OpportunityScoreEvidence[]
+  complianceChecks     ComplianceCheck[]
 
   @@unique([marketplaceId, marketplaceProductId])
   @@index([status, isActive])
@@ -284,20 +299,21 @@ model ProductScore {
 }
 
 model GeneratedContent {
-  id              String      @id @default(cuid())
-  productId       String
-  createdById     String
-  kind            ContentKind
-  content         Json
-  promptVersion   String
-  provider        String
-  providerModel   String
-  requestId       String?
-  generationError String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  product         Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdBy       User        @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  id               String            @id @default(cuid())
+  productId        String
+  createdById      String
+  kind             ContentKind
+  content          Json
+  promptVersion    String
+  provider         String
+  providerModel    String
+  requestId        String?
+  generationError  String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  product          Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdBy        User              @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  complianceChecks ComplianceCheck[]
 
   @@index([productId, createdAt(sort: Desc)])
   @@index([createdById, createdAt(sort: Desc)])
@@ -673,4 +689,57 @@ model OpportunityScoreEvidence {
 
   @@index([productId, calculatedAt(sort: Desc)])
   @@index([version, opportunityScore(sort: Desc)])
+}
+
+model ComplianceCheck {
+  id                 String                  @id @default(cuid())
+  productId          String
+  generatedContentId String?
+  marketplace        String
+  status             ComplianceStatus
+  highestSeverity    ComplianceSeverity
+  contentHash        String
+  checkedByEmail     String
+  checkedAt          DateTime                @default(now())
+  overriddenAt       DateTime?
+  overriddenByEmail  String?
+  overrideReason     String?
+  product            Product                 @relation(fields: [productId], references: [id], onDelete: Cascade)
+  generatedContent   GeneratedContent?       @relation(fields: [generatedContentId], references: [id], onDelete: SetNull)
+  results            ComplianceCheckResult[]
+  overrides          ComplianceOverride[]
+
+  @@index([productId, checkedAt(sort: Desc)])
+  @@index([status, highestSeverity])
+  @@index([generatedContentId])
+}
+
+model ComplianceCheckResult {
+  id            String             @id @default(cuid())
+  checkId       String
+  ruleCode      String
+  status        ComplianceStatus
+  severity      ComplianceSeverity
+  message       String
+  fixSuggestion String?
+  evidence      Json
+  createdAt     DateTime           @default(now())
+  check         ComplianceCheck    @relation(fields: [checkId], references: [id], onDelete: Cascade)
+
+  @@unique([checkId, ruleCode])
+  @@index([status, severity])
+}
+
+model ComplianceOverride {
+  id                String           @id @default(cuid())
+  checkId           String
+  fromStatus        ComplianceStatus
+  toStatus          ComplianceStatus
+  reason            String
+  overriddenByEmail String
+  createdAt         DateTime         @default(now())
+  check             ComplianceCheck  @relation(fields: [checkId], references: [id], onDelete: Cascade)
+
+  @@index([checkId, createdAt(sort: Desc)])
+  @@index([overriddenByEmail, createdAt(sort: Desc)])
 }

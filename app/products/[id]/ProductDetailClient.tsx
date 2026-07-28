@@ -37,6 +37,7 @@ interface ProductDetailClientProps {
   initialGeneratedContent: GeneratedContent | null;
   initialProduct: Product;
   initialStatusHistory: ProductStatusEvent[];
+  role: "ADMIN" | "USER";
   userEmail: string;
 }
 
@@ -60,6 +61,22 @@ interface TrendIntelligence {
     direction: "SPIKING" | "RISING" | "STABLE" | "DECAYING";
     spikeMagnitude: number;
   };
+}
+
+interface ComplianceCheck {
+  id: string;
+  status: "PASS" | "WARNING" | "FAIL" | "OVERRIDDEN";
+  highestSeverity: "INFO" | "WARNING" | "HIGH" | "BLOCKING";
+  exportBlocked: boolean;
+  checkedAt: string;
+  overrideReason: string | null;
+  results: Array<{
+    ruleCode: string;
+    status: "PASS" | "WARNING" | "FAIL";
+    severity: "INFO" | "WARNING" | "HIGH" | "BLOCKING";
+    message: string;
+    fixSuggestion: string | null;
+  }>;
 }
 
 const statusLabels: Record<ProductStatus, string> = {
@@ -102,6 +119,7 @@ export function ProductDetailClient({
   initialGeneratedContent,
   initialProduct,
   initialStatusHistory,
+  role,
   userEmail,
 }: ProductDetailClientProps) {
   const [product, setProduct] = useState(initialProduct);
@@ -115,6 +133,8 @@ export function ProductDetailClient({
   const [trendIntelligence, setTrendIntelligence] =
     useState<TrendIntelligence | null>(null);
   const [trendUnavailable, setTrendUnavailable] = useState(false);
+  const [compliance, setCompliance] = useState<ComplianceCheck | null>(null);
+  const [complianceLoading, setComplianceLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -130,6 +150,21 @@ export function ProductDetailClient({
       .catch(() => {
         if (active) setTrendUnavailable(true);
       });
+    return () => {
+      active = false;
+    };
+  }, [initialProduct.id]);
+
+  useEffect(() => {
+    let active = true;
+    void fetch(`/api/products/${initialProduct.id}/compliance`)
+      .then(async (response) => {
+        const result =
+          (await response.json()) as ApiEnvelope<ComplianceCheck | null>;
+        if (!response.ok) throw new Error("Compliance could not be loaded.");
+        if (active) setCompliance(result.data ?? null);
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
     };
@@ -234,6 +269,69 @@ export function ProductDetailClient({
       );
     } finally {
       setBusyAction(null);
+    }
+  }
+
+  async function runCompliance() {
+    setComplianceLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/products/${product.id}/compliance`, {
+        method: "POST",
+      });
+      const result = (await response.json()) as ApiEnvelope<ComplianceCheck>;
+      if (!response.ok || !result.data) {
+        throw new Error(
+          result.error?.message ?? "Compliance check could not be completed.",
+        );
+      }
+      setCompliance(result.data);
+      setMessage(
+        result.data.exportBlocked
+          ? "Compliance check completed. Export is blocked."
+          : "Compliance check completed.",
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Compliance check could not be completed.",
+      );
+    } finally {
+      setComplianceLoading(false);
+    }
+  }
+
+  async function overrideCompliance() {
+    if (!compliance) return;
+    const reason = window.prompt(
+      "Record the evidence-based reason for this compliance override (minimum 20 characters).",
+    );
+    if (!reason) return;
+    setComplianceLoading(true);
+    try {
+      const response = await fetch(
+        `/api/compliance/${compliance.id}/override`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ reason }),
+        },
+      );
+      const result = (await response.json()) as ApiEnvelope<ComplianceCheck>;
+      if (!response.ok || !result.data) {
+        throw new Error(
+          result.error?.message ?? "Override could not be recorded.",
+        );
+      }
+      setCompliance(result.data);
+      setMessage("Administrator override recorded in the audit log.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Override could not be saved.",
+      );
+    } finally {
+      setComplianceLoading(false);
     }
   }
 
@@ -404,7 +502,111 @@ export function ProductDetailClient({
             <ContentStudio
               productId={product.id}
               initialContent={initialGeneratedContent}
+              exportBlocked={compliance?.exportBlocked ?? false}
+              complianceMessage={
+                compliance?.exportBlocked
+                  ? "Copy/export is blocked by one or more blocking compliance violations."
+                  : null
+              }
+              onGenerated={() => setCompliance(null)}
             />
+
+            <section className="rounded-3xl border border-[#dce2db] bg-white p-6 sm:p-8">
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                <div className="flex items-start gap-3">
+                  <span className="grid size-10 place-items-center rounded-xl bg-[#e4f2e7] text-[#317746]">
+                    <ShieldCheck className="size-[18px]" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-bold tracking-[0.14em] text-[#4c815b] uppercase">
+                      Marketplace compliance
+                    </p>
+                    <h2 className="mt-1 text-xl font-semibold">
+                      Content safety and export gate
+                    </h2>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void runCompliance()}
+                  disabled={complianceLoading}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#d5dcd4] bg-[#f8faf7] px-3.5 text-xs font-bold disabled:opacity-50"
+                >
+                  {complianceLoading ? (
+                    <LoaderCircle className="size-3.5 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="size-3.5" />
+                  )}
+                  Run compliance
+                </button>
+              </div>
+              {compliance ? (
+                <>
+                  <div
+                    className={`mt-5 rounded-xl p-4 text-sm ${
+                      compliance.status === "PASS"
+                        ? "bg-emerald-50 text-emerald-800"
+                        : compliance.status === "OVERRIDDEN"
+                          ? "bg-blue-50 text-blue-800"
+                          : compliance.exportBlocked
+                            ? "bg-red-50 text-red-800"
+                            : "bg-amber-50 text-amber-800"
+                    }`}
+                  >
+                    <span className="font-bold">{compliance.status}</span> ·
+                    Highest severity {compliance.highestSeverity.toLowerCase()}{" "}
+                    ·{" "}
+                    {compliance.exportBlocked
+                      ? "Export blocked"
+                      : "Export permitted"}
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    {compliance.results
+                      .filter((item) => item.status !== "PASS")
+                      .map((item) => (
+                        <div
+                          key={item.ruleCode}
+                          className="rounded-xl border border-[#e3e8e2] p-4"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs font-bold">
+                              {item.ruleCode.replaceAll("_", " ")}
+                            </p>
+                            <span className="rounded-full bg-[#f2f4f1] px-2 py-1 text-[10px] font-bold">
+                              {item.severity}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-5 text-[#667269]">
+                            {item.message}
+                          </p>
+                          {item.fixSuggestion ? (
+                            <p className="mt-2 text-xs font-semibold text-[#397149]">
+                              Fix: {item.fixSuggestion}
+                            </p>
+                          ) : null}
+                        </div>
+                      ))}
+                  </div>
+                  {role === "ADMIN" &&
+                  (compliance.status === "FAIL" ||
+                    compliance.status === "WARNING") ? (
+                    <button
+                      type="button"
+                      onClick={() => void overrideCompliance()}
+                      disabled={complianceLoading}
+                      className="mt-4 text-xs font-bold text-[#9a4f3f]"
+                    >
+                      Record administrator override
+                    </button>
+                  ) : null}
+                </>
+              ) : (
+                <p className="mt-5 rounded-xl bg-[#f5f7f4] p-4 text-sm leading-6 text-[#68736b]">
+                  Generate content, then run compliance before copying or
+                  publishing it.
+                </p>
+              )}
+            </section>
 
             <section className="rounded-3xl border border-[#dce2db] bg-white p-6 sm:p-8">
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">

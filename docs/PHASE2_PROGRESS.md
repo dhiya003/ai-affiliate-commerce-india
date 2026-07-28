@@ -43,7 +43,7 @@ runtime evidence.
 - The PostgreSQL seed produced five marketplace rules and at least one record
   in every other policy model while preserving all 50 products.
 - A second PostgreSQL seed run left all aggregate counts unchanged.
-- The complete repository quality gate passes 57 checks, including the
+- The complete repository quality gate passes 61 checks, including the
   production build, authentication boundaries, model coverage, sources, and
   administrator audit workflow.
 
@@ -79,7 +79,7 @@ runtime evidence.
   `5 marketplaces | 5 sources | 5 schedules | 50 products | 5 marketplace
 rules | 2 commission rules | 1 content policy | 1 disclosure | 1 prohibited
 practice`.
-- The complete repository quality gate passes 57 checks, including ingestion
+- The complete repository quality gate passes 61 checks, including ingestion
   schemas, normalization, canonical-key stability, confidence thresholds,
   freshness, retry backoff, and D1 seed execution.
 
@@ -117,14 +117,45 @@ practice`.
 - Unit coverage verifies window membership, expiry, source confidence,
   spike detection, v2 net commission, penalties, and marketplace/category
   multipliers.
-- The complete repository quality gate passes 57 checks.
+- The complete repository quality gate passes 61 checks.
+
+## Compliance engine
+
+- [x] Compliance-check, per-rule result, and append-only override models in D1
+      and PostgreSQL.
+- [x] Exact marketplace and exact-product verification.
+- [x] Product-colour, current-price, combo-price, and discount-accuracy checks.
+- [x] Required affiliate and marketplace-specific disclosure checks, including
+      the Amazon Associate disclosure path.
+- [x] Prohibited-claim, unsupported health-claim, restricted-category, and
+      content-originality checks.
+- [x] Pass, warning, fail, and overridden workflow states with info, warning,
+      high, and blocking severities.
+- [x] Per-result remediation suggestions and evidence payloads.
+- [x] Copy/export blocking for unresolved blocking violations.
+- [x] Administrator-only manual overrides with mandatory reason, actor,
+      timestamp, previous status, and durable audit record.
+- [x] Protected product compliance API and product-detail compliance interface.
+
+## Compliance validation evidence
+
+- The forward-only D1 migration creates all three compliance tables after the
+  policy, ingestion, and trend/scoring migrations.
+- An isolated PostgreSQL 16 database applied all five repository migrations,
+  seeded the existing catalogue, and contained all three compliance tables.
+- Unit coverage verifies compliant content, price and discount mismatches,
+  missing disclosure, prohibited and unsupported claims, exact-product
+  identity, and colour matching.
+- The complete repository quality gate passes 61 checks.
 
 ## Next Phase 2 slice
 
-The next repository-controlled target is the compliance engine and
-evidence-to-recommendation workflow. Live marketplace credentials, supported
-partner API access, production adapters, and enabled schedules remain external
-integration gates; no sample value is presented as live marketplace evidence.
+The next repository-controlled target is the evidence-to-recommendation
+experience: top-10 views, recommendation explanations, “why now,” audience and
+content angles, comparisons, saves, and risk summaries. Live marketplace
+credentials, supported partner API access, production adapters, and enabled
+schedules remain external integration gates; no sample value is presented as
+live marketplace evidence.
 
 ## Release
 

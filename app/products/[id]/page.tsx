@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireChatGPTUser } from "@/app/chatgpt-auth";
+import { getApplicationRole } from "@/lib/auth/roles";
 import { getLatestContent } from "@/lib/content/repository";
 import { getProduct, getProductStatusHistory } from "@/lib/products/repository";
 import { ProductDetailClient } from "./ProductDetailClient";
@@ -33,6 +34,7 @@ async function ProtectedProductDetail({
       initialGeneratedContent={generatedContent}
       initialProduct={product}
       initialStatusHistory={statusHistory}
+      role={getApplicationRole(user)}
       userEmail={user.email}
     />
   );
