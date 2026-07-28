@@ -10,6 +10,8 @@ external integrations remain unchecked until their production state is proven.
 - [x] Fifty-product seeded catalogue across Amazon, Flipkart, Meesho, Myntra,
       and AJIO.
 - [x] Searchable and filterable product catalogue with pagination.
+- [x] Dashboard displays opportunity and trend scores, derives summary metrics
+      from live products, and provides loading, fallback, error, and retry states.
 - [x] Manual creation, CSV import validation, editing, and deletion.
 - [x] New, Reviewed, Approved, Rejected, and Promoted status history.
 - [x] Versioned opportunity score, explanation, recalculation, and tests.

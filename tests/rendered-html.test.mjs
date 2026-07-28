@@ -152,6 +152,22 @@ test("ships catalogue filtering, pagination, and product editing controls", asyn
   assert.match(detail, /ProductEditDialog/);
 });
 
+test("ships truthful dashboard trend, loading, and recovery states", async () => {
+  const dashboard = await readFile(
+    new URL("../app/dashboard/DashboardClient.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(dashboard, /Trend \{Math\.round\(product\.trendScore\)\}/);
+  assert.match(dashboard, /Refreshing live catalogue/);
+  assert.match(dashboard, /Live data could not refresh/);
+  assert.match(dashboard, />\s*Retry\s*</);
+  assert.match(dashboard, /dashboardMetrics\.averageCommission/);
+  assert.match(dashboard, /timeZone: "Asia\/Kolkata"/);
+  assert.doesNotMatch(dashboard, /Sunday, 26 July/);
+  assert.doesNotMatch(dashboard, /\["Rising today", "18"/);
+});
+
 test("ships administrator onboarding and an evidence-based launch gate", async () => {
   const [onboarding, checklist] = await Promise.all([
     readFile(new URL("../docs/ADMIN_ONBOARDING.md", import.meta.url), "utf8"),

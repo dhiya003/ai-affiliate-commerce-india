@@ -6,9 +6,11 @@ import {
   Bell,
   Bookmark,
   ChevronDown,
+  CircleAlert,
   CircleHelp,
   Flame,
   LayoutDashboard,
+  LoaderCircle,
   Menu,
   PackagePlus,
   Search,
@@ -108,28 +110,43 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [savedProducts, setSavedProducts] = useState<string[]>([]);
   const [intakeOpen, setIntakeOpen] = useState(false);
+  const [liveLoading, setLiveLoading] = useState(true);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const [refreshVersion, setRefreshVersion] = useState(0);
 
   useEffect(() => {
     let active = true;
 
     void fetch("/api/products?pageSize=50&sort=score")
       .then(async (response) => {
-        if (!response.ok) return;
+        if (!response.ok) {
+          throw new Error("The live catalogue could not be loaded.");
+        }
         const result = (await response.json()) as {
           data?: { products: Product[] };
         };
-        if (active && result.data?.products.length) {
+        if (!result.data) {
+          throw new Error("The live catalogue response was incomplete.");
+        }
+        if (active) {
           setLiveProducts(result.data.products.map(toDashboardProduct));
         }
       })
       .catch(() => {
-        // The server-rendered seed set remains a useful offline fallback.
+        if (active) {
+          setLiveError(
+            "Live data could not refresh. Showing the verified server snapshot.",
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setLiveLoading(false);
       });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshVersion]);
 
   const categories = useMemo(
     () =>
@@ -166,6 +183,36 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
     query,
   ]);
 
+  const dashboardMetrics = useMemo(() => {
+    const rising = liveProducts.filter(
+      (product) => product.trendScore > 50,
+    ).length;
+    const awaitingReview = liveProducts.filter(
+      (product) => product.status === "NEW",
+    ).length;
+    const averageCommission = liveProducts.length
+      ? Math.round(
+          liveProducts.reduce(
+            (total, product) => total + product.commissionEstimate,
+            0,
+          ) / liveProducts.length,
+        )
+      : 0;
+
+    return { rising, awaitingReview, averageCommission };
+  }, [liveProducts]);
+
+  const todayLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-IN", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        timeZone: "Asia/Kolkata",
+      }).format(new Date()),
+    [],
+  );
+
   function clearOpportunityFilters() {
     setMarketplace("All");
     setCategory("All");
@@ -173,6 +220,12 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
     setMinimumPrice("");
     setMaximumPrice("");
     setQuery("");
+  }
+
+  function retryLiveCatalogue() {
+    setLiveLoading(true);
+    setLiveError(null);
+    setRefreshVersion((current) => current + 1);
   }
 
   function toggleSaved(productId: string) {
@@ -247,7 +300,8 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
               Daily opportunity brief
             </div>
             <p className="mt-2 text-xs leading-5 text-white/55">
-              18 products moved up today. Three are ready for review.
+              {dashboardMetrics.rising} products have above-baseline trend
+              signals. {dashboardMetrics.awaitingReview} await review.
             </p>
           </div>
           <a
@@ -345,7 +399,7 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
           <section className="flex flex-col justify-between gap-5 xl:flex-row xl:items-end">
             <div>
               <p className="mb-2 text-xs font-bold tracking-[0.16em] text-[#528260] uppercase">
-                Sunday, 26 July
+                {todayLabel}
               </p>
               <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
                 Today’s top opportunities
@@ -372,8 +426,12 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
                 TrendingUp,
               ],
               ["Opportunities", `${liveProducts.length}`, PackagePlus],
-              ["Avg. commission", "₹79", Sparkles],
-              ["Rising today", "18", Flame],
+              [
+                "Avg. commission",
+                formatInr(dashboardMetrics.averageCommission),
+                Sparkles,
+              ],
+              ["Rising signals", `${dashboardMetrics.rising}`, Flame],
             ].map(([label, value, Icon], index) => {
               const MetricIcon = Icon as typeof TrendingUp;
               return (
@@ -470,6 +528,36 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
               Showing {visibleProducts.length} of {liveProducts.length}{" "}
               opportunities
             </p>
+            {liveLoading ? (
+              <p
+                className="inline-flex items-center gap-2 text-xs font-semibold text-[#52705b]"
+                role="status"
+              >
+                <LoaderCircle
+                  className="size-3.5 animate-spin"
+                  aria-hidden="true"
+                />
+                Refreshing live catalogue
+              </p>
+            ) : null}
+            {liveError ? (
+              <div
+                role="alert"
+                className="flex flex-col gap-3 rounded-xl border border-[#ead1ca] bg-[#fff5f2] p-3 text-xs text-[#874638] sm:flex-row sm:items-center sm:justify-between"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <CircleAlert className="size-4 shrink-0" aria-hidden="true" />
+                  {liveError}
+                </span>
+                <button
+                  type="button"
+                  onClick={retryLiveCatalogue}
+                  className="self-start rounded-lg border border-[#d9b9b0] bg-white px-3 py-2 font-bold sm:self-auto"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : null}
             <label className="relative sm:hidden">
               <Search
                 className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[#7a867d]"
@@ -572,10 +660,16 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
                         </div>
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between">
-                        <span className="rounded-full bg-[#f0f3ef] px-2.5 py-1 text-[10px] font-bold text-[#637067]">
-                          {product.status}
-                        </span>
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-[#f0f3ef] px-2.5 py-1 text-[10px] font-bold text-[#637067]">
+                            {product.status}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#eaf4ec] px-2.5 py-1 text-[10px] font-bold text-[#367348]">
+                            <TrendingUp className="size-3" aria-hidden="true" />
+                            Trend {Math.round(product.trendScore)}
+                          </span>
+                        </div>
                         <Link
                           href={`/products/${product.id}`}
                           className="inline-flex items-center gap-1.5 text-xs font-bold text-[#276f3c] hover:text-[#184d2a]"

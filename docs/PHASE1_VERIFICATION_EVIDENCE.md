@@ -105,6 +105,14 @@ that:
 - all controls remain usable without clipping at 390 by 844; and
 - the post-release Worker error query contained no application exceptions.
 
+The subsequent dashboard integrity correction removes static operational claims
+from the private release. The displayed date now uses India time; top score,
+average commission, rising-signal count, and awaiting-review count are derived
+from the loaded catalogue; every product card exposes its trend score; and the
+live catalogue refresh has accessible loading, fallback, failure, and retry
+states. The complete repository quality gate passes 39 checks, including a
+dedicated regression check for these requirements.
+
 ## Error monitoring
 
 The application now includes a provider-neutral operational-error adapter:
