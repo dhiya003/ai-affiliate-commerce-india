@@ -65,6 +65,46 @@ enum PolicySeverity {
   BLOCKING
 }
 
+enum SourceType {
+  MANUAL
+  API
+  FEED
+}
+
+enum SourceStatus {
+  READY
+  RUNNING
+  DEGRADED
+  RATE_LIMITED
+  DISABLED
+}
+
+enum IngestionTriggerType {
+  MANUAL
+  SCHEDULED
+  RETRY
+}
+
+enum IngestionRunStatus {
+  RUNNING
+  SUCCEEDED
+  PARTIAL
+  FAILED
+  RETRY_SCHEDULED
+}
+
+enum MatchStatus {
+  EXACT
+  PROBABLE
+  REVIEW
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  UNAVAILABLE
+  UNKNOWN
+}
+
 model User {
   id              String             @id @default(cuid())
   email           String             @unique
@@ -76,6 +116,7 @@ model User {
   productsCreated Product[]          @relation("ProductCreator")
   contentsCreated GeneratedContent[]
   statusChanges   PromotionStatus[]
+  ingestionRuns   IngestionRun[]
 
   @@index([role])
 }
@@ -97,6 +138,7 @@ model Marketplace {
   affiliateDisclosures AffiliateDisclosure[]
   prohibitedPractices  ProhibitedPractice[]
   updateHistory        PlatformUpdateHistory[]
+  productSources       ProductSource[]
 
   @@index([isActive])
 }
@@ -166,6 +208,8 @@ model Product {
   statusHistory        PromotionStatus[]
   tags                 ProductTagAssignment[]
   affiliateLinks       AffiliateLink[]
+  sourcePayloads       RawSourceData[]
+  sourceMatches        ProductSourceMatch[]
 
   @@unique([marketplaceId, marketplaceProductId])
   @@index([status, isActive])
@@ -404,4 +448,148 @@ model PlatformUpdateHistory {
 
   @@index([marketplaceId, detectedAt(sort: Desc)])
   @@index([policyKind, policyId])
+}
+
+model ProductSource {
+  id                     String               @id @default(cuid())
+  marketplaceId          String
+  name                   String
+  sourceType             SourceType
+  status                 SourceStatus         @default(READY)
+  freshnessWindowMinutes Int                  @default(1440)
+  lastAttemptAt          DateTime?
+  lastSuccessAt          DateTime?
+  lastErrorAt            DateTime?
+  consecutiveFailures    Int                  @default(0)
+  rateLimitedUntil       DateTime?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  marketplace            Marketplace          @relation(fields: [marketplaceId], references: [id], onDelete: Cascade)
+  runs                   IngestionRun[]
+  rawPayloads            RawSourceData[]
+  matches                ProductSourceMatch[]
+  errors                 IngestionError[]
+  schedule               IngestionSchedule?
+
+  @@unique([marketplaceId, name])
+  @@index([status, lastSuccessAt(sort: Desc)])
+}
+
+model IngestionRun {
+  id             String               @id @default(cuid())
+  sourceId       String
+  parentRunId    String?
+  triggerType    IngestionTriggerType
+  status         IngestionRunStatus
+  initiatedById  String
+  startedAt      DateTime             @default(now())
+  completedAt    DateTime?
+  attemptedCount Int                  @default(0)
+  importedCount  Int                  @default(0)
+  updatedCount   Int                  @default(0)
+  matchedCount   Int                  @default(0)
+  duplicateCount Int                  @default(0)
+  failedCount    Int                  @default(0)
+  retryCount     Int                  @default(0)
+  nextRetryAt    DateTime?
+  errorSummary   String?
+  source         ProductSource        @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  initiatedBy    User                 @relation(fields: [initiatedById], references: [id], onDelete: Restrict)
+  parentRun      IngestionRun?        @relation("IngestionRetries", fields: [parentRunId], references: [id], onDelete: SetNull)
+  retryRuns      IngestionRun[]       @relation("IngestionRetries")
+  rawPayloads    RawSourceData[]
+  errors         IngestionError[]
+
+  @@index([sourceId, startedAt(sort: Desc)])
+  @@index([status, nextRetryAt])
+}
+
+model CanonicalProductGroup {
+  id             String               @id @default(cuid())
+  canonicalKey   String               @unique
+  normalizedName String
+  brand          String?
+  category       String
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  rawPayloads    RawSourceData[]
+  sourceMatches  ProductSourceMatch[]
+
+  @@index([category])
+}
+
+model RawSourceData {
+  id                 String                 @id @default(cuid())
+  sourceId           String
+  runId              String
+  canonicalGroupId   String?
+  productId          String?
+  externalId         String
+  payload            Json
+  payloadHash        String
+  normalizedProduct  Json?
+  sourceTimestamp    DateTime
+  receivedAt         DateTime               @default(now())
+  confidence         Decimal                @db.Decimal(5, 4)
+  matchStatus        MatchStatus
+  availabilityStatus AvailabilityStatus
+  isStale            Boolean                @default(false)
+  source             ProductSource          @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  run                IngestionRun           @relation(fields: [runId], references: [id], onDelete: Cascade)
+  canonicalGroup     CanonicalProductGroup? @relation(fields: [canonicalGroupId], references: [id], onDelete: SetNull)
+  product            Product?               @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@unique([sourceId, externalId, payloadHash])
+  @@index([runId, receivedAt(sort: Desc)])
+  @@index([productId, sourceTimestamp(sort: Desc)])
+  @@index([isStale, availabilityStatus])
+}
+
+model ProductSourceMatch {
+  id               String                @id @default(cuid())
+  sourceId         String
+  canonicalGroupId String
+  productId        String?
+  externalId       String
+  confidence       Decimal               @db.Decimal(5, 4)
+  status           MatchStatus
+  matchedAt        DateTime              @default(now())
+  source           ProductSource         @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  canonicalGroup   CanonicalProductGroup @relation(fields: [canonicalGroupId], references: [id], onDelete: Cascade)
+  product          Product?              @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@unique([sourceId, externalId])
+  @@index([canonicalGroupId, status])
+}
+
+model IngestionError {
+  id         String        @id @default(cuid())
+  runId      String
+  sourceId   String
+  externalId String?
+  code       String
+  message    String
+  retryable  Boolean       @default(false)
+  attempt    Int           @default(1)
+  occurredAt DateTime      @default(now())
+  resolvedAt DateTime?
+  run        IngestionRun  @relation(fields: [runId], references: [id], onDelete: Cascade)
+  source     ProductSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([runId, occurredAt(sort: Desc)])
+  @@index([sourceId, resolvedAt])
+}
+
+model IngestionSchedule {
+  id             String        @id @default(cuid())
+  sourceId       String        @unique
+  cadenceMinutes Int
+  enabled        Boolean       @default(false)
+  nextRunAt      DateTime?
+  lastRunAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  source         ProductSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([enabled, nextRunAt])
 }

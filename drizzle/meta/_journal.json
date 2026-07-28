@@ -36,6 +36,20 @@
       "when": 1785266053721,
       "tag": "0004_seed_phase2_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1785267298945,
+      "tag": "0005_abandoned_energizer",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1785267321279,
+      "tag": "0006_seed_phase2_ingestion_sources",
+      "breakpoints": true
     }
   ]
 }

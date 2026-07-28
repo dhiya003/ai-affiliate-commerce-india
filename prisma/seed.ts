@@ -4,6 +4,7 @@ import {
   PrismaClient,
   ProductWorkflowStatus,
   ReturnRisk,
+  SourceType,
   StockStatus,
   UserRole,
 } from "@prisma/client";
@@ -48,6 +49,37 @@ async function main() {
   const marketplaceBySlug = new Map(
     marketplaceRecords.map((marketplace) => [marketplace.slug, marketplace]),
   );
+
+  for (const marketplace of marketplaceRecords) {
+    const source = await prisma.productSource.upsert({
+      where: {
+        marketplaceId_name: {
+          marketplaceId: marketplace.id,
+          name: `${marketplace.name} operator import`,
+        },
+      },
+      update: {
+        sourceType: SourceType.MANUAL,
+        freshnessWindowMinutes: 720,
+      },
+      create: {
+        marketplaceId: marketplace.id,
+        name: `${marketplace.name} operator import`,
+        sourceType: SourceType.MANUAL,
+        freshnessWindowMinutes: 720,
+      },
+    });
+
+    await prisma.ingestionSchedule.upsert({
+      where: { sourceId: source.id },
+      update: { cadenceMinutes: 720 },
+      create: {
+        sourceId: source.id,
+        cadenceMinutes: 720,
+        enabled: false,
+      },
+    });
+  }
 
   for (const [marketplaceIndex, marketplace] of marketplaceRecords.entries()) {
     const seller = await prisma.seller.upsert({

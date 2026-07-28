@@ -1,5 +1,6 @@
 import {
   index,
+  integer,
   real,
   sqliteTable,
   text,
@@ -227,6 +228,217 @@ export const platformUpdateHistory = sqliteTable(
       table.detectedAt,
     ),
     index("platform_update_policy_idx").on(table.policyKind, table.policyId),
+  ],
+);
+
+export const productSources = sqliteTable(
+  "product_sources",
+  {
+    id: text("id").primaryKey(),
+    marketplace: text("marketplace").notNull(),
+    name: text("name").notNull(),
+    sourceType: text("source_type").notNull(),
+    status: text("status").notNull().default("READY"),
+    freshnessWindowMinutes: integer("freshness_window_minutes")
+      .notNull()
+      .default(1440),
+    lastAttemptAt: text("last_attempt_at"),
+    lastSuccessAt: text("last_success_at"),
+    lastErrorAt: text("last_error_at"),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    rateLimitedUntil: text("rate_limited_until"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("product_sources_marketplace_name_unique").on(
+      table.marketplace,
+      table.name,
+    ),
+    index("product_sources_status_success_idx").on(
+      table.status,
+      table.lastSuccessAt,
+    ),
+  ],
+);
+
+export const ingestionRuns = sqliteTable(
+  "ingestion_runs",
+  {
+    id: text("id").primaryKey(),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => productSources.id, { onDelete: "cascade" }),
+    parentRunId: text("parent_run_id"),
+    triggerType: text("trigger_type").notNull(),
+    status: text("status").notNull(),
+    initiatedByEmail: text("initiated_by_email").notNull(),
+    startedAt: text("started_at").notNull(),
+    completedAt: text("completed_at"),
+    attemptedCount: integer("attempted_count").notNull().default(0),
+    importedCount: integer("imported_count").notNull().default(0),
+    updatedCount: integer("updated_count").notNull().default(0),
+    matchedCount: integer("matched_count").notNull().default(0),
+    duplicateCount: integer("duplicate_count").notNull().default(0),
+    failedCount: integer("failed_count").notNull().default(0),
+    retryCount: integer("retry_count").notNull().default(0),
+    nextRetryAt: text("next_retry_at"),
+    errorSummary: text("error_summary"),
+  },
+  (table) => [
+    index("ingestion_runs_source_started_idx").on(
+      table.sourceId,
+      table.startedAt,
+    ),
+    index("ingestion_runs_status_retry_idx").on(
+      table.status,
+      table.nextRetryAt,
+    ),
+  ],
+);
+
+export const canonicalProductGroups = sqliteTable(
+  "canonical_product_groups",
+  {
+    id: text("id").primaryKey(),
+    canonicalKey: text("canonical_key").notNull(),
+    normalizedName: text("normalized_name").notNull(),
+    brand: text("brand"),
+    category: text("category").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("canonical_product_groups_key_unique").on(table.canonicalKey),
+    index("canonical_product_groups_category_idx").on(table.category),
+  ],
+);
+
+export const rawSourceData = sqliteTable(
+  "raw_source_data",
+  {
+    id: text("id").primaryKey(),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => productSources.id, { onDelete: "cascade" }),
+    runId: text("run_id")
+      .notNull()
+      .references(() => ingestionRuns.id, { onDelete: "cascade" }),
+    canonicalGroupId: text("canonical_group_id").references(
+      () => canonicalProductGroups.id,
+      { onDelete: "set null" },
+    ),
+    productId: text("product_id").references(() => products.id, {
+      onDelete: "set null",
+    }),
+    externalId: text("external_id").notNull(),
+    payloadJson: text("payload_json").notNull(),
+    payloadHash: text("payload_hash").notNull(),
+    normalizedProductJson: text("normalized_product_json"),
+    sourceTimestamp: text("source_timestamp").notNull(),
+    receivedAt: text("received_at").notNull(),
+    confidence: real("confidence").notNull(),
+    matchStatus: text("match_status").notNull(),
+    availabilityStatus: text("availability_status").notNull(),
+    isStale: integer("is_stale", { mode: "boolean" }).notNull().default(false),
+  },
+  (table) => [
+    uniqueIndex("raw_source_data_source_external_hash_unique").on(
+      table.sourceId,
+      table.externalId,
+      table.payloadHash,
+    ),
+    index("raw_source_data_run_received_idx").on(table.runId, table.receivedAt),
+    index("raw_source_data_product_source_time_idx").on(
+      table.productId,
+      table.sourceTimestamp,
+    ),
+    index("raw_source_data_stale_availability_idx").on(
+      table.isStale,
+      table.availabilityStatus,
+    ),
+  ],
+);
+
+export const productSourceMatches = sqliteTable(
+  "product_source_matches",
+  {
+    id: text("id").primaryKey(),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => productSources.id, { onDelete: "cascade" }),
+    canonicalGroupId: text("canonical_group_id")
+      .notNull()
+      .references(() => canonicalProductGroups.id, { onDelete: "cascade" }),
+    productId: text("product_id").references(() => products.id, {
+      onDelete: "set null",
+    }),
+    externalId: text("external_id").notNull(),
+    confidence: real("confidence").notNull(),
+    status: text("status").notNull(),
+    matchedAt: text("matched_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("product_source_matches_source_external_unique").on(
+      table.sourceId,
+      table.externalId,
+    ),
+    index("product_source_matches_group_status_idx").on(
+      table.canonicalGroupId,
+      table.status,
+    ),
+  ],
+);
+
+export const ingestionErrors = sqliteTable(
+  "ingestion_errors",
+  {
+    id: text("id").primaryKey(),
+    runId: text("run_id")
+      .notNull()
+      .references(() => ingestionRuns.id, { onDelete: "cascade" }),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => productSources.id, { onDelete: "cascade" }),
+    externalId: text("external_id"),
+    code: text("code").notNull(),
+    message: text("message").notNull(),
+    retryable: integer("retryable", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    attempt: integer("attempt").notNull().default(1),
+    occurredAt: text("occurred_at").notNull(),
+    resolvedAt: text("resolved_at"),
+  },
+  (table) => [
+    index("ingestion_errors_run_time_idx").on(table.runId, table.occurredAt),
+    index("ingestion_errors_source_resolution_idx").on(
+      table.sourceId,
+      table.resolvedAt,
+    ),
+  ],
+);
+
+export const ingestionSchedules = sqliteTable(
+  "ingestion_schedules",
+  {
+    id: text("id").primaryKey(),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => productSources.id, { onDelete: "cascade" }),
+    cadenceMinutes: integer("cadence_minutes").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+    nextRunAt: text("next_run_at"),
+    lastRunAt: text("last_run_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("ingestion_schedules_source_unique").on(table.sourceId),
+    index("ingestion_schedules_enabled_next_idx").on(
+      table.enabled,
+      table.nextRunAt,
+    ),
   ],
 );
 

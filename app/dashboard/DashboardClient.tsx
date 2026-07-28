@@ -8,6 +8,7 @@ import {
   ChevronDown,
   CircleAlert,
   CircleHelp,
+  Database,
   Flame,
   LayoutDashboard,
   LoaderCircle,
@@ -267,6 +268,7 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
             [ShoppingBag, "All products", "/products", false],
             [WandSparkles, "Content studio", "/products", false],
             [BookOpenCheck, "Policy centre", "/policies", false],
+            [Database, "Source operations", "/sources", false],
             [Bookmark, "Saved", "#saved", false],
           ].map(([Icon, label, href, active]) => {
             const NavIcon = Icon as typeof LayoutDashboard;

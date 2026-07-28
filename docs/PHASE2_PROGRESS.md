@@ -43,17 +43,52 @@ runtime evidence.
 - The PostgreSQL seed produced five marketplace rules and at least one record
   in every other policy model while preserving all 50 products.
 - A second PostgreSQL seed run left all aggregate counts unchanged.
-- The complete repository quality gate passes 43 checks, including the
+- The complete repository quality gate passes 52 checks, including the
   production build, authentication boundaries, model coverage, sources, and
   administrator audit workflow.
 
+## Normalized product ingestion
+
+- [x] Product-source and marketplace-adapter TypeScript contracts.
+- [x] Validated normalized-product contract for all five marketplaces.
+- [x] Immutable raw payload retention with deterministic SHA-256 hashes.
+- [x] Source and receipt timestamps, confidence, match status, availability,
+      and per-source freshness windows.
+- [x] Run-level counters and per-record error logs.
+- [x] Bounded exponential retry state, administrator recovery endpoint, and
+      unresolved-error resolution.
+- [x] Source rate-limit state and pre-run enforcement.
+- [x] Duplicate payload reconciliation by source, external identifier, and
+      payload hash.
+- [x] Marketplace-product matching and canonical product grouping.
+- [x] Stale and unavailable-product detection.
+- [x] Disabled-by-default schedules for every marketplace source; live
+      schedules are not enabled without credentials and a supported adapter.
+- [x] Administrator-only manual triggers for batches of up to 250 records.
+- [x] Protected source-health and ingestion-statistics interface at `/sources`.
+- [x] D1 and PostgreSQL parity for sources, runs, raw payloads, canonical
+      groups, matches, errors, and schedules.
+
+## Ingestion validation evidence
+
+- All seven forward-only D1 ingestion tables and five marketplace source and
+  schedule seeds apply after the existing catalogue and policy migrations.
+- The isolated PostgreSQL 16 verification applied all three migrations and
+  seeded twice without count drift.
+- PostgreSQL aggregate evidence after the second seed:
+  `5 marketplaces | 5 sources | 5 schedules | 50 products | 5 marketplace
+  rules | 2 commission rules | 1 content policy | 1 disclosure | 1 prohibited
+  practice`.
+- The complete repository quality gate passes 52 checks, including ingestion
+  schemas, normalization, canonical-key stability, confidence thresholds,
+  freshness, retry backoff, and D1 seed execution.
+
 ## Next Phase 2 slice
 
-The next repository-controlled target is the normalized ingestion framework:
-product-source and marketplace-adapter contracts, raw source retention,
-timestamps, confidence, run/error logging, retry and rate-limit states,
-deduplication, freshness, and source-health reporting. Real marketplace
-credentials and production schedules remain external integration gates.
+The next repository-controlled target is opportunity-scoring version 2:
+replace placeholder trend, demand, and competition inputs with explicit
+evidence models and explainable score provenance. Real marketplace credentials,
+live adapters, and production schedules remain external integration gates.
 
 ## Release
 
