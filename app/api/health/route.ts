@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logEvent } from "@/lib/observability/logger";
+import { captureOperationalError } from "@/lib/observability/monitoring-runtime";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,9 @@ export async function GET() {
           contentGeneration: env.OPENAI_API_KEY
             ? "openai-configured"
             : "built-in-ready",
+          errorMonitoring: env.ERROR_MONITORING_WEBHOOK_URL
+            ? "webhook-configured"
+            : "worker-logs-only",
         },
       },
       {
@@ -38,6 +42,12 @@ export async function GET() {
       status: 503,
       errorType: error instanceof Error ? error.name : typeof error,
     });
+    captureOperationalError({
+      event: "health.database.unavailable",
+      requestId,
+      status: 503,
+      errorType: error instanceof Error ? error.name : typeof error,
+    });
 
     return NextResponse.json(
       {
@@ -46,6 +56,7 @@ export async function GET() {
         services: {
           database: "down",
           contentGeneration: "unknown",
+          errorMonitoring: "unknown",
         },
       },
       {

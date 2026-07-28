@@ -29,6 +29,8 @@ external integrations remain unchecked until their production state is proven.
       disposable core-workflow verification.
 - [x] Prisma migration and idempotent 50-product seed verified on PostgreSQL 16.
 - [x] Production dependency audit reports zero high-severity vulnerabilities.
+- [x] Provider-neutral HTTPS error-monitoring adapter uses bounded redacted
+      events, isolated delivery, and structured Worker-log fallback.
 - [ ] External error-monitoring destination and alert routing configured.
 
 ## Production configuration

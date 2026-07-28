@@ -89,6 +89,41 @@ The complete category list is fetched from the owner-visible dataset rather
 than inferred from the current page. New categories created through product
 intake are merged into the filter without requiring a reload.
 
+## Dashboard discovery filters
+
+Private Sites version 11 was released from commit
+`079d06b0aef03da82f044357e08172d65315ff30`. Signed-in production QA proved
+that:
+
+- the dashboard refreshes from the live API to all 50 products;
+- category, minimum-rating, minimum-price, and maximum-price filters compose
+  correctly;
+- Electronics, rating 4.5 or higher, and price ₹500–₹1,500 returns exactly two
+  matching products;
+- contradictory price bounds show the empty state and clearing the filters
+  restores all 50 products;
+- all controls remain usable without clipping at 390 by 844; and
+- the post-release Worker error query contained no application exceptions.
+
+## Error monitoring
+
+The application now includes a provider-neutral operational-error adapter:
+
+- only HTTPS destinations are accepted;
+- payloads contain bounded event metadata and omit messages, stack traces,
+  prompts, tokens, emails, cookies, and request bodies;
+- optional bearer authentication is supported;
+- delivery has a three-second timeout and cannot fail the user request;
+- the health endpoint reports whether webhook delivery or Worker-log fallback
+  is active; and
+- automated tests prove valid delivery, invalid configuration rejection,
+  redaction boundaries, and failure isolation.
+
+The complete repository quality gate passes 38 checks after this integration,
+including formatting, lint, strict type checking, the production build, and all
+automated tests. Configuring a production destination and alert routing remains
+an external launch gate.
+
 ## Dependency security
 
 - Next.js was upgraded from 16.2.6 to 16.2.12.

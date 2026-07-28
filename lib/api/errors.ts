@@ -1,5 +1,6 @@
 import { ZodError } from "zod";
 import { logEvent } from "@/lib/observability/logger";
+import { captureOperationalError } from "@/lib/observability/monitoring-runtime";
 import { apiFailure } from "./response";
 
 type PrismaKnownError = Error & {
@@ -35,6 +36,13 @@ export function handleApiError(
   if (error instanceof ApiError) {
     if (error.status >= 500) {
       logEvent("error", "api.request.failed", {
+        requestId,
+        code: error.code,
+        status: error.status,
+        errorType: error.name,
+      });
+      captureOperationalError({
+        event: "api.request.failed",
         requestId,
         code: error.code,
         status: error.status,
@@ -95,6 +103,13 @@ export function handleApiError(
       code: error.code,
       status: 503,
     });
+    captureOperationalError({
+      event: "database.request.failed",
+      requestId,
+      code: error.code,
+      status: 503,
+      errorType: error.name,
+    });
 
     return apiFailure(
       {
@@ -106,6 +121,12 @@ export function handleApiError(
   }
 
   logEvent("error", "api.request.unhandled", {
+    requestId,
+    status: 500,
+    errorType: error instanceof Error ? error.name : typeof error,
+  });
+  captureOperationalError({
+    event: "api.request.unhandled",
     requestId,
     status: 500,
     errorType: error instanceof Error ? error.name : typeof error,

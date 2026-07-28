@@ -597,7 +597,7 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
               <Search className="mx-auto size-7 text-[#8b958e]" />
               <h2 className="mt-4 font-semibold">No opportunities found</h2>
               <p className="mt-2 text-sm text-[#778179]">
-                Try another marketplace or clear your search.
+                Adjust or clear your filters and search.
               </p>
             </section>
           )}

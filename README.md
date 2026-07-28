@@ -33,6 +33,7 @@ The latest reproducible runtime results are recorded in
 - PostgreSQL and Prisma as the production system-of-record architecture
 - D1 and Drizzle for durable storage in the current private Sites release
 - Zod for boundary and environment validation
+- Redacted structured Worker logs with an optional HTTPS error-monitoring webhook
 - Node's test runner for domain, migration, authentication, and render checks
 - GitHub Actions for lint, type, test, and build gates
 - Sites-compatible Cloudflare runtime for the web application
@@ -54,6 +55,13 @@ secrets.
 the application uses its conservative built-in launch generator so the complete
 Phase 1 workflow remains testable; saved records identify which provider and
 prompt version produced each bundle.
+
+`ERROR_MONITORING_WEBHOOK_URL` optionally delivers bounded operational error
+events to an HTTPS monitoring endpoint. `ERROR_MONITORING_TOKEN` adds bearer
+authentication. Delivery has a three-second timeout, cannot fail a user
+request, and never includes prompts, tokens, emails, cookies, or exception
+messages. Structured Worker logs remain the fallback when no endpoint is
+configured.
 
 ## Quality commands
 

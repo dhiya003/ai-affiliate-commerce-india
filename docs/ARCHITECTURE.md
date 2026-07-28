@@ -33,6 +33,8 @@ Browser
 - `lib/content/`: provider-neutral prompts, generation, validation, response
   parsing, and generated-content persistence.
 - `lib/scoring/`: pure scoring rules, explanations, and version metadata.
+- `lib/observability/`: redacted structured logging and isolated operational
+  error delivery.
 - `db/` and `drizzle/`: current Sites schema and forward-only D1 migrations.
 - `lib/db/`: Prisma client, transactions, and PostgreSQL error translation.
 - `prisma/`: schema, migrations, and seed data.
@@ -67,6 +69,9 @@ remain auditable.
 - Wrap multi-record writes in transactions.
 - Set timeouts on AI calls; surface retryable failures without losing user data.
 - Use connection pooling and health checks for PostgreSQL.
+- Deliver only bounded, non-sensitive operational error metadata to an optional
+  HTTPS webhook. Monitoring delivery runs outside the request lifecycle, has a
+  three-second timeout, and falls back to structured Worker logs.
 
 ## Deployment
 

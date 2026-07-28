@@ -16,5 +16,7 @@ declare namespace Cloudflare {
     IMAGES: AffinityImagesBinding;
     OPENAI_API_KEY?: string;
     OPENAI_MODEL?: string;
+    ERROR_MONITORING_WEBHOOK_URL?: string;
+    ERROR_MONITORING_TOKEN?: string;
   }
 }
