@@ -54,3 +54,10 @@ product-source and marketplace-adapter contracts, raw source retention,
 timestamps, confidence, run/error logging, retry and rate-limit states,
 deduplication, freshness, and source-health reporting. Real marketplace
 credentials and production schedules remain external integration gates.
+
+## Release
+
+The marketplace policy foundation was released as owner-only Sites version 14
+from commit `b79af44bb47bda90deb87c0774aca40105490e0f`. The saved version records
+that exact source provenance, includes both forward-only D1 migrations, and its
+production deployment reached the terminal `succeeded` state.
