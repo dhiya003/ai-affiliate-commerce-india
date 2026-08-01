@@ -135,6 +135,16 @@ The readiness workflow deliberately does not deploy or enable affiliate traffic.
 Real marketplace transports and notification endpoints remain disabled until
 their evidence fields and a separate owner-controlled activation are approved.
 
+## Production deployment
+
+The production Worker uses `docker/wrangler.production.jsonc`, a dedicated APAC
+D1 database, Cloudflare Images, static assets, five-minute scheduled automation,
+and Worker observability. After the release-readiness workflow succeeds for the
+current `main` commit, run the protected `Deploy production` workflow with that
+exact commit. Configure `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as
+secrets on the `production-release` GitHub environment. Deployment does not
+enable real affiliate traffic or marketplace publishing.
+
 ## Security
 
 Do not report security issues in public issues. Follow

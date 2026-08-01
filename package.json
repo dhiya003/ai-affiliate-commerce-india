@@ -22,6 +22,8 @@
     "db:generate:site": "drizzle-kit generate",
     "verify:core": "node scripts/verify-core-workflow.mjs",
     "verify:release": "node scripts/verify-release-readiness.mjs",
+    "db:migrate:production": "wrangler d1 migrations apply affinity-india-production --remote --config docker/wrangler.production.jsonc",
+    "deploy:production": "npm run build && wrangler deploy --config docker/wrangler.production.jsonc",
     "test:load": "node scripts/load-test.mjs"
   },
   "dependencies": {
