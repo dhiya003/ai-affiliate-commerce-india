@@ -1,0 +1,54 @@
+name: Deploy production
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_commit:
+        description: Exact main commit approved by the release-readiness workflow
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production-release
+    steps:
+      - name: Require exact main commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT: ${{ inputs.release_commit }}
+        run: |
+          main_sha="$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')"
+          test "$RELEASE_COMMIT" = "$main_sha"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_commit }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run check
+      - run: npm audit --omit=dev --audit-level=high
+
+      - name: Apply production migrations
+        run: npm run db:migrate:production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy production Worker
+        run: npm run deploy:production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
