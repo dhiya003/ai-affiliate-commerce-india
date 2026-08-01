@@ -3,13 +3,68 @@ import { readFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { deliverNotificationEmail } from "../lib/notifications/delivery.ts";
+import { safeCsvCell } from "../lib/notifications/csv.ts";
 import {
   NOTIFICATION_TYPES,
   notificationPreferenceSchema,
   reportGenerationSchema,
 } from "../lib/notifications/schema.ts";
+import {
+  dueSummaryPeriods,
+  reportPeriodForFrequency,
+} from "../lib/notifications/schedule.ts";
+
+test("summary periods follow completed India-time calendar boundaries", () => {
+  const periods = dueSummaryPeriods(new Date("2026-06-01T01:00:00.000Z"));
+  assert.deepEqual(
+    periods.map(({ frequency, key, from, to }) => ({
+      frequency,
+      key,
+      from,
+      to,
+    })),
+    [
+      {
+        frequency: "DAILY",
+        key: "2026-06-01",
+        from: "2026-05-31T18:30:00.000Z",
+        to: "2026-06-01T18:29:59.999Z",
+      },
+      {
+        frequency: "WEEKLY",
+        key: "2026-05-25",
+        from: "2026-05-24T18:30:00.000Z",
+        to: "2026-05-31T18:29:59.999Z",
+      },
+      {
+        frequency: "MONTHLY",
+        key: "2026-05",
+        from: "2026-04-30T18:30:00.000Z",
+        to: "2026-05-31T18:29:59.999Z",
+      },
+    ],
+  );
+  const ordinaryDay = new Date("2026-06-02T01:00:00.000Z");
+  assert.equal(dueSummaryPeriods(ordinaryDay).length, 1);
+  assert.equal(reportPeriodForFrequency("WEEKLY", ordinaryDay), null);
+  assert.equal(
+    reportPeriodForFrequency("DAILY", ordinaryDay)?.reportType,
+    "DAILY_OPPORTUNITY",
+  );
+});
 
 test("notification preferences and report windows are strictly validated", () => {
+  assert.equal(
+    notificationPreferenceSchema.safeParse({
+      inAppEnabled: true,
+      emailEnabled: false,
+      digestFrequency: "DAILY",
+      enabledTypes: [],
+      quietHoursStart: "22:00",
+      quietHoursEnd: null,
+    }).success,
+    false,
+  );
   assert.equal(
     notificationPreferenceSchema.safeParse({
       inAppEnabled: true,
@@ -50,6 +105,12 @@ test("notification preferences and report windows are strictly validated", () =>
     }).success,
     false,
   );
+});
+
+test("CSV downloads neutralize formulas even after leading whitespace", () => {
+  assert.equal(safeCsvCell("normal"), '"normal"');
+  assert.equal(safeCsvCell("=1+1"), '"\'=1+1"');
+  assert.equal(safeCsvCell("\t@SUM(A1:A2)"), '"\'\t@SUM(A1:A2)"');
 });
 
 test("email delivery is HTTPS-only, bounded, and provider-neutral", async () => {
@@ -168,9 +229,10 @@ test("notification and report APIs are authenticated and owner scoped", async ()
   ]);
   assert.match(repository, /owner_email = \?/);
   assert.match(repository, /ON CONFLICT\(owner_email, dedupe_key\) DO NOTHING/);
+  assert.match(repository, /visible\.channel = 'IN_APP'/);
+  assert.match(repository, /dueSummaryPeriods\(now\)/);
   assert.match(repository, /retryDueNotificationDeliveries/);
   assert.match(reports, /WHERE id = \? AND owner_email = \?/);
-  assert.match(reports, /if \(\/\^\[=\+\\-@\]\//);
 });
 
 test("every requested operational and intelligence alert type is generated", async () => {

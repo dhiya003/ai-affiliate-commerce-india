@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api/errors";
+import { safeCsvCell } from "./csv.ts";
 import type { ReportGenerationInput } from "./schema.ts";
 import type { GeneratedReport } from "./types.ts";
 
@@ -286,12 +287,6 @@ export async function listReports(email: string) {
     .bind(email)
     .all<ReportRow>();
   return rows.results.map(mapReport);
-}
-
-function safeCsvCell(value: string | number | null) {
-  let text = value == null ? "" : String(value);
-  if (/^[=+\-@]/.test(text)) text = `'${text}`;
-  return `"${text.replaceAll('"', '""')}"`;
 }
 
 export async function downloadReport(id: string, email: string) {

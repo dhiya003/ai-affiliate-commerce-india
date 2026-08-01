@@ -9,6 +9,7 @@ import {
   type NotificationPreferenceInput,
   type NotificationType,
 } from "./schema.ts";
+import { dueSummaryPeriods } from "./schedule.ts";
 import type { Notification, NotificationPreference } from "./types.ts";
 
 async function sha256Hex(value: string) {
@@ -288,14 +289,21 @@ export async function retryDueNotificationDeliveries() {
     }>();
   for (const row of rows.results) {
     const preference = await getNotificationPreference(row.owner_email);
-    if (!preference.emailEnabled) {
+    if (
+      !preference.emailEnabled ||
+      !preference.enabledTypes.includes(row.type)
+    ) {
       await db
         .prepare(
           `UPDATE notification_deliveries SET status = 'SKIPPED',
-            next_attempt_at = NULL, error_code = 'EMAIL_DISABLED', updated_at = ?
+            next_attempt_at = NULL, error_code = ?, updated_at = ?
            WHERE notification_id = ? AND channel = 'EMAIL'`,
         )
-        .bind(new Date().toISOString(), row.notification_id)
+        .bind(
+          preference.emailEnabled ? "TYPE_DISABLED" : "EMAIL_DISABLED",
+          new Date().toISOString(),
+          row.notification_id,
+        )
         .run();
       continue;
     }
@@ -328,6 +336,7 @@ export async function createNotification(
 ) {
   const preference = await getNotificationPreference(email);
   if (!preference.enabledTypes.includes(input.type)) return null;
+  if (!preference.inAppEnabled && !preference.emailEnabled) return null;
   const db = await database();
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
@@ -429,6 +438,11 @@ export async function listNotifications(
           AS email_status
        FROM notifications n
        WHERE n.owner_email = ?
+         AND EXISTS (
+           SELECT 1 FROM notification_deliveries visible
+           WHERE visible.notification_id = n.id
+             AND visible.channel = 'IN_APP' AND visible.status = 'SENT'
+         )
          AND (? = 0 OR n.read_at IS NULL)
          AND (n.expires_at IS NULL OR n.expires_at > ?)
        ORDER BY n.created_at DESC LIMIT 200`,
@@ -465,7 +479,12 @@ export async function setNotificationReadState(
   )
     .prepare(
       `UPDATE notifications SET read_at = ?
-       WHERE id = ? AND owner_email = ?`,
+       WHERE id = ? AND owner_email = ?
+         AND EXISTS (
+           SELECT 1 FROM notification_deliveries visible
+           WHERE visible.notification_id = notifications.id
+             AND visible.channel = 'IN_APP' AND visible.status = 'SENT'
+         )`,
     )
     .bind(read ? new Date().toISOString() : null, id, email)
     .run();
@@ -485,7 +504,12 @@ export async function markAllNotificationsRead(email: string) {
   )
     .prepare(
       `UPDATE notifications SET read_at = ?
-       WHERE owner_email = ? AND read_at IS NULL`,
+       WHERE owner_email = ? AND read_at IS NULL
+         AND EXISTS (
+           SELECT 1 FROM notification_deliveries visible
+           WHERE visible.notification_id = notifications.id
+             AND visible.channel = 'IN_APP' AND visible.status = 'SENT'
+         )`,
     )
     .bind(new Date().toISOString(), email)
     .run();
@@ -494,10 +518,14 @@ export async function markAllNotificationsRead(email: string) {
 
 type AlertCandidate = CreateNotificationInput;
 
-export async function generateNotificationAlerts(email: string) {
+export async function generateNotificationAlerts(
+  email: string,
+  now = new Date(),
+) {
   const db = await database();
-  const since = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
-  const day = new Date().toISOString().slice(0, 10);
+  const since = new Date(now.getTime() - 24 * 60 * 60_000).toISOString();
+  const day = now.toISOString().slice(0, 10);
+  const summaryPeriods = dueSummaryPeriods(now);
   const candidates: AlertCandidate[] = [];
   const topProducts = await db
     .prepare(
@@ -521,7 +549,7 @@ export async function generateNotificationAlerts(email: string) {
       title: "Today’s affiliate opportunities are ready",
       body: `${topProducts.results.length} products are ranked. ${top.name} leads at ${Math.round(top.opportunity_score)}/100 on ${top.marketplace}.`,
       actionUrl: "/dashboard",
-      dedupeKey: `DAILY_OPPORTUNITY_SUMMARY:${day}`,
+      dedupeKey: `DAILY_OPPORTUNITY_SUMMARY:${summaryPeriods[0].key}`,
       metadata: { topProductId: top.id, topScore: top.opportunity_score },
     });
   }
@@ -799,41 +827,59 @@ export async function generateNotificationAlerts(email: string) {
       dedupeKey: `COMPLIANCE_FAILURE:${row.id}`,
     });
   }
-  const performance = await db
-    .prepare(
-      `SELECT
-         (SELECT COUNT(*) FROM click_events ce
-          JOIN tracked_links tl ON tl.id = ce.tracked_link_id
-          WHERE tl.owner_email = ? AND ce.clicked_at >= ?
-            AND ce.is_bot = 0 AND ce.is_duplicate = 0) AS clicks,
-         (SELECT COUNT(*) FROM conversion_events cv
-          WHERE cv.owner_email = ? AND cv.converted_at >= ?
-            AND cv.order_status IN ('CONFIRMED', 'SHIPPED', 'DELIVERED')) AS conversions,
-         (SELECT ROUND(COALESCE(SUM(amount), 0), 2) FROM commission_events cm
-          WHERE cm.owner_email = ? AND cm.observed_at >= ?
-            AND cm.status IN ('APPROVED', 'PAID')) AS commission`,
-    )
-    .bind(email, since, email, since, email, since)
-    .first<{ clicks: number; conversions: number; commission: number }>();
-  if (performance) {
-    const week = new Date().toISOString().slice(0, 8);
-    const month = new Date().toISOString().slice(0, 7);
-    candidates.push({
-      type: "WEEKLY_PERFORMANCE_SUMMARY",
-      severity: "INFO",
-      title: "Weekly performance snapshot",
-      body: `${performance.clicks} verified clicks, ${performance.conversions} accepted conversions, and ₹${performance.commission.toFixed(2)} approved commission in the latest 24-hour evidence window.`,
-      actionUrl: "/performance",
-      dedupeKey: `WEEKLY_PERFORMANCE_SUMMARY:${week}`,
-    });
-    candidates.push({
-      type: "MONTHLY_EARNINGS_SUMMARY",
-      severity: performance.commission > 0 ? "SUCCESS" : "INFO",
-      title: "Monthly earnings snapshot",
-      body: `Approved commission in the latest evidence window is ₹${performance.commission.toFixed(2)}. Generate a month-to-date report for the full breakdown.`,
-      actionUrl: "/notifications",
-      dedupeKey: `MONTHLY_EARNINGS_SUMMARY:${month}`,
-    });
+  for (const period of summaryPeriods.filter(
+    ({ frequency }) => frequency !== "DAILY",
+  )) {
+    const performance = await db
+      .prepare(
+        `SELECT
+           (SELECT COUNT(*) FROM click_events ce
+            JOIN tracked_links tl ON tl.id = ce.tracked_link_id
+            WHERE tl.owner_email = ? AND ce.clicked_at BETWEEN ? AND ?
+              AND ce.is_bot = 0 AND ce.is_duplicate = 0) AS clicks,
+           (SELECT COUNT(*) FROM conversion_events cv
+            WHERE cv.owner_email = ? AND cv.converted_at BETWEEN ? AND ?
+              AND cv.order_status IN ('CONFIRMED', 'SHIPPED', 'DELIVERED')) AS conversions,
+           (SELECT ROUND(COALESCE(SUM(amount), 0), 2)
+            FROM commission_events cm
+            WHERE cm.owner_email = ? AND cm.observed_at BETWEEN ? AND ?
+              AND cm.status IN ('APPROVED', 'PAID')) AS commission`,
+      )
+      .bind(
+        email,
+        period.from,
+        period.to,
+        email,
+        period.from,
+        period.to,
+        email,
+        period.from,
+        period.to,
+      )
+      .first<{ clicks: number; conversions: number; commission: number }>();
+    if (!performance) continue;
+    const commission = Number(performance.commission ?? 0);
+    if (period.frequency === "WEEKLY") {
+      candidates.push({
+        type: "WEEKLY_PERFORMANCE_SUMMARY",
+        severity: "INFO",
+        title: "Weekly performance summary",
+        body: `${performance.clicks} verified clicks, ${performance.conversions} accepted conversions, and ₹${commission.toFixed(2)} approved commission in the previous India-time calendar week.`,
+        actionUrl: "/performance",
+        dedupeKey: `WEEKLY_PERFORMANCE_SUMMARY:${period.key}`,
+        metadata: { from: period.from, to: period.to },
+      });
+    } else {
+      candidates.push({
+        type: "MONTHLY_EARNINGS_SUMMARY",
+        severity: commission > 0 ? "SUCCESS" : "INFO",
+        title: "Monthly earnings summary",
+        body: `Approved commission for the previous India-time calendar month is ₹${commission.toFixed(2)} from ${performance.conversions} accepted conversions.`,
+        actionUrl: "/notifications",
+        dedupeKey: `MONTHLY_EARNINGS_SUMMARY:${period.key}`,
+        metadata: { from: period.from, to: period.to },
+      });
+    }
   }
   let created = 0;
   for (const candidate of candidates) {

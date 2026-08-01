@@ -63,7 +63,7 @@ runtime evidence.
   lifecycle actions, and unbounded filters.
 - Campaign repository and API tests verify owner-scoped reads and mutations,
   authenticated identity, and server-side validation.
-- The complete repository quality gate passes 117 checks, including formatting,
+- The complete repository quality gate passes 138 checks, including formatting,
   lint, strict type checks, the production build, migration execution, schema
   privacy invariants, and all prior Phase 1 and Phase 2 coverage.
 
@@ -112,7 +112,7 @@ runtime evidence.
   imports, lifecycle states, owner scoping, date ranges, and aggregation shape.
 - The production build contains campaign promotion, public tracked redirect,
   performance read, attribution import, and signed-in dashboard routes.
-- The complete repository quality gate passes 117 checks.
+- The complete repository quality gate passes 138 checks.
 
 ## Content experiments and learning
 
@@ -154,7 +154,7 @@ proven without conversion evidence.
   administrator-only refresh.
 - The production build includes all four experiment/learning APIs and the
   signed-in workspace.
-- The complete repository quality gate passes 117 checks.
+- The complete repository quality gate passes 138 checks.
 
 ## Governed scoring optimization
 
@@ -191,20 +191,21 @@ separate explicit action.
   degradation, and rollback gates.
 - The production build includes the administrator workspace and all three
   scoring-governance API routes.
-- The complete repository quality gate passes 117 checks.
+- The complete repository quality gate passes 138 checks.
 
 ## Scheduled automation control plane
 
 - [x] Durable automation-job, run, retry-lineage, and bounded processing-log
       models in D1 and PostgreSQL.
-- [x] Nine seeded schedules for product ingestion, price refresh, availability
+- [x] Twelve seeded schedules for product ingestion, price refresh, availability
       refresh, trend refresh, score recalculation, top-10 generation, content
-      generation, compliance checks, and governed score retraining.
+      generation, compliance checks, governed score retraining, notification
+      scans, notification retries, and summary-report generation.
 - [x] Every seeded schedule starts paused; deployment cannot start external work
       implicitly.
 - [x] Fifteen-minute Worker scheduler dispatches due jobs and due retries.
-- [x] Daily and weekly UTC cron validation with deterministic next-run
-      calculation.
+- [x] Daily and weekly cron validation with deterministic, timezone-aware
+      next-run calculation for UTC and Asia/Kolkata schedules.
 - [x] Upstream dependency health blocks downstream execution.
 - [x] Per-job timeout, bounded attempt count, and exponential retry policy.
 - [x] Healthy, paused, running, degraded, and failing job-health states.
@@ -227,11 +228,11 @@ success. Those schedules remain paused by default.
 
 ## Automation validation evidence
 
-- The forward-only D1 migration creates three automation tables, eight indexes,
-  the expected run/log foreign keys, and nine paused jobs after every earlier
+- The forward-only D1 migrations create three automation tables, eight indexes,
+  the expected run/log foreign keys, and twelve paused jobs after every earlier
   migration.
-- A disposable PostgreSQL 16 database applied all nine repository migrations;
-  it contained nine paused jobs and the 50-product seed remained idempotent
+- A disposable PostgreSQL 16 database applied all eleven repository migrations;
+  it contained twelve paused jobs and the 50-product seed remained idempotent
   across two runs.
 - Tests cover cron bounds, deterministic next times, job policy limits,
   dependency blocking, exponential retries, timeouts, explicit skips,
@@ -239,14 +240,48 @@ success. Those schedules remain paused by default.
   migration execution, route protection, and dashboard controls.
 - The production build includes the scheduled Worker entry point, four
   automation APIs, and the administrator dashboard.
-- The complete repository quality gate passes 117 checks.
+- The complete repository quality gate passes 138 checks.
+
+## User notifications and reports
+
+- [x] Owner-scoped in-app notification centre with unread counts, individual
+      read/unread state, mark-all-read, bounded history, and action links.
+- [x] Notification preferences for in-app and email channels, enabled alert
+      types, digest cadence, and paired India-time quiet hours.
+- [x] Daily opportunity, weekly performance, and monthly earnings summaries.
+      Scheduled summaries use stable India-time calendar windows and run only
+      when the selected cadence is due.
+- [x] Trending-product, price-drop, stock-return, affiliate-rule-change,
+      campaign-performance, low-conversion, and high-return-risk alerts.
+- [x] Failed-import, stale-price, broken-link, compliance-failure, and
+      high-opportunity operational alerts.
+- [x] Provider-neutral HTTPS email handoff with feature gating, five-second
+      timeout, quiet-hour deferral, bounded exponential retries, hashed provider
+      identifiers, and opt-out rechecks before retry.
+- [x] Owner-scoped CSV and JSON report generation, 30-day expiry, background
+      retention cleanup, download authorization, and spreadsheet-formula
+      neutralization.
+- [x] Registered users and product-only owners are included in scheduled alert
+      discovery rather than requiring a campaign or pre-existing preference.
+
+## Notification and report validation evidence
+
+- Forward-only D1 and PostgreSQL migrations create preferences, notifications,
+  channel deliveries, generated reports, indexes, uniqueness boundaries, and
+  three paused notification/report automation jobs.
+- Tests cover preference and date-range validation, India-time daily/weekly/
+  monthly period boundaries, timezone-aware cron scheduling, HTTPS-only email
+  delivery, CSV injection protection, migration execution, API authentication,
+  owner scoping, alert-type coverage, and queue retention policy.
+- Targeted notification, automation, and reliability tests pass alongside
+  strict TypeScript, ESLint, and formatting checks.
 
 ## Next Phase 3 slice
 
-The next target is user notifications and reports: in-app delivery, preferences,
-read state, daily/weekly/monthly summaries, operational and performance alerts,
-email-provider handoff, and report downloads. Credential-dependent automation
-handlers remain an explicit integration gate in parallel.
+The remaining work is production verification and externally gated integration:
+enable only approved marketplace transports and notification delivery endpoints,
+exercise the live scheduler and report downloads, complete acceptance evidence,
+and obtain explicit owner approval before release.
 
 ## Release
 

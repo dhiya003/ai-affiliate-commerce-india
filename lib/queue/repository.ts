@@ -73,10 +73,7 @@ async function executeQueueJob(db: D1Database, job: QueueJobRow) {
   }
   if (job.job_type === "EXPIRED_REPORT_CLEANUP") {
     const result = await db
-      .prepare(
-        `DELETE FROM generated_reports WHERE status = 'EXPIRED'
-         AND expires_at < ?`,
-      )
+      .prepare(`DELETE FROM generated_reports WHERE expires_at < ?`)
       .bind(new Date(Date.now() - 7 * 24 * 60 * 60_000).toISOString())
       .run();
     return { deleted: result.meta.changes ?? 0 };

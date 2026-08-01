@@ -10,6 +10,7 @@ import {
   retryDueNotificationDeliveries,
 } from "@/lib/notifications/repository";
 import { generateReport } from "@/lib/notifications/reports";
+import { reportPeriodForFrequency } from "@/lib/notifications/schedule";
 import { nextCronOccurrence } from "./cron.ts";
 import type { AutomationJobUpdate } from "./schema";
 import type { AutomationJob, AutomationRun } from "./types";
@@ -167,7 +168,11 @@ export async function updateAutomationJob(
   const cronExpression = input.cronExpression ?? existing.cron_expression;
   const enabled = input.enabled ?? Boolean(existing.enabled);
   const nextRunAt = enabled
-    ? nextCronOccurrence(cronExpression).toISOString()
+    ? nextCronOccurrence(
+        cronExpression,
+        new Date(),
+        existing.timezone,
+      ).toISOString()
     : null;
   const now = new Date().toISOString();
   await db
@@ -230,6 +235,7 @@ interface HandlerResult {
 async function executeJobHandler(
   db: D1Database,
   job: JobRow,
+  executionTime = new Date(),
 ): Promise<HandlerResult> {
   if (job.job_type === "PRODUCT_INGESTION") {
     const routes = await resolveMarketplaceSourceRoutes(db);
@@ -315,8 +321,10 @@ async function executeJobHandler(
   if (job.job_type === "NOTIFICATION_SCAN") {
     const owners = await db
       .prepare(
-        `SELECT owner_email FROM notification_preferences
+        `SELECT email AS owner_email FROM application_users
+         UNION SELECT owner_email FROM notification_preferences
          UNION SELECT owner_email FROM campaigns
+         UNION SELECT owner_email FROM products WHERE owner_email IS NOT NULL
          UNION SELECT owner_email FROM recommendation_feedback
          ORDER BY owner_email LIMIT 250`,
       )
@@ -324,7 +332,10 @@ async function executeJobHandler(
     let evaluated = 0;
     let created = 0;
     for (const owner of owners.results) {
-      const result = await generateNotificationAlerts(owner.owner_email);
+      const result = await generateNotificationAlerts(
+        owner.owner_email,
+        executionTime,
+      );
       evaluated += result.evaluated;
       created += result.created;
     }
@@ -356,29 +367,23 @@ async function executeJobHandler(
          ORDER BY owner_email LIMIT 250`,
       )
       .all<{ owner_email: string; digest_frequency: string }>();
-    const to = new Date();
     let generated = 0;
+    let notDue = 0;
     for (const owner of owners.results) {
-      const durationDays =
-        owner.digest_frequency === "MONTHLY"
-          ? 31
-          : owner.digest_frequency === "WEEKLY"
-            ? 7
-            : 1;
-      const type =
-        owner.digest_frequency === "MONTHLY"
-          ? "MONTHLY_EARNINGS"
-          : owner.digest_frequency === "WEEKLY"
-            ? "WEEKLY_PERFORMANCE"
-            : "DAILY_OPPORTUNITY";
+      const period = reportPeriodForFrequency(
+        owner.digest_frequency as "NONE" | "DAILY" | "WEEKLY" | "MONTHLY",
+        executionTime,
+      );
+      if (!period) {
+        notDue += 1;
+        continue;
+      }
       await generateReport(
         {
-          type,
+          type: period.reportType,
           format: "CSV",
-          from: new Date(
-            to.getTime() - durationDays * 24 * 60 * 60_000,
-          ).toISOString(),
-          to: to.toISOString(),
+          from: period.from,
+          to: period.to,
         },
         owner.owner_email,
       );
@@ -389,8 +394,8 @@ async function executeJobHandler(
       processedCount: owners.results.length,
       succeededCount: generated,
       failedCount: 0,
-      metrics: { owners: owners.results.length, generated },
-      message: `Generated ${generated} scheduled summary reports.`,
+      metrics: { owners: owners.results.length, generated, notDue },
+      message: `Generated ${generated} scheduled summary reports; ${notDue} owner cadences were not due.`,
     };
   }
   return {
@@ -483,6 +488,9 @@ export async function runAutomationJob(
     return mapRun(blocked!);
   }
   const startedAt = new Date();
+  const executionTime = options.scheduledFor
+    ? new Date(options.scheduledFor)
+    : startedAt;
   const timeoutAt = new Date(startedAt.getTime() + job.timeout_seconds * 1000);
   await db.batch([
     db
@@ -508,7 +516,7 @@ export async function runAutomationJob(
   );
   try {
     const result = await Promise.race([
-      executeJobHandler(db, job),
+      executeJobHandler(db, job, executionTime),
       new Promise<never>((_, reject) => {
         setTimeout(
           () => reject(new Error("AUTOMATION_JOB_TIMEOUT")),
@@ -521,6 +529,7 @@ export async function runAutomationJob(
       ? nextCronOccurrence(
           job.cron_expression,
           new Date(completedAt),
+          job.timezone,
         ).toISOString()
       : null;
     await db.batch([

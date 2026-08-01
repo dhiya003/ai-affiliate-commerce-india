@@ -18,22 +18,31 @@ export const NOTIFICATION_TYPES = [
   "HIGH_OPPORTUNITY_PRODUCT",
 ] as const;
 
-export const notificationPreferenceSchema = z.object({
-  inAppEnabled: z.boolean(),
-  emailEnabled: z.boolean(),
-  digestFrequency: z.enum(["NONE", "DAILY", "WEEKLY", "MONTHLY"]),
-  enabledTypes: z
-    .array(z.enum(NOTIFICATION_TYPES))
-    .max(NOTIFICATION_TYPES.length),
-  quietHoursStart: z
-    .string()
-    .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/)
-    .nullable(),
-  quietHoursEnd: z
-    .string()
-    .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/)
-    .nullable(),
-});
+export const notificationPreferenceSchema = z
+  .object({
+    inAppEnabled: z.boolean(),
+    emailEnabled: z.boolean(),
+    digestFrequency: z.enum(["NONE", "DAILY", "WEEKLY", "MONTHLY"]),
+    enabledTypes: z
+      .array(z.enum(NOTIFICATION_TYPES))
+      .max(NOTIFICATION_TYPES.length),
+    quietHoursStart: z
+      .string()
+      .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/)
+      .nullable(),
+    quietHoursEnd: z
+      .string()
+      .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/)
+      .nullable(),
+  })
+  .refine(
+    ({ quietHoursStart, quietHoursEnd }) =>
+      Boolean(quietHoursStart) === Boolean(quietHoursEnd),
+    {
+      path: ["quietHoursEnd"],
+      message: "Quiet hours require both a start and end time.",
+    },
+  );
 
 export const notificationReadSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("read") }),
