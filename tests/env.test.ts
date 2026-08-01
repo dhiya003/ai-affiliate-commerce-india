@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { validateEnvironment } from "../lib/env.ts";
+import { validateEnvironment, validateWorkerEnvironment } from "../lib/env.ts";
 
 const validEnvironment = {
   NODE_ENV: "production",
@@ -12,6 +12,8 @@ const validEnvironment = {
   OPENAI_API_KEY: "",
   ERROR_MONITORING_WEBHOOK_URL: "",
   ERROR_MONITORING_TOKEN: "",
+  NOTIFICATION_EMAIL_WEBHOOK_URL: "",
+  NOTIFICATION_EMAIL_TOKEN: "",
   LOG_LEVEL: "info",
 } as NodeJS.ProcessEnv;
 
@@ -21,6 +23,48 @@ test("production environment supports the built-in content fallback", () => {
   assert.equal(environment.OPENAI_API_KEY, undefined);
   assert.equal(environment.OPENAI_MODEL, "gpt-5.6-sol");
   assert.equal(environment.ERROR_MONITORING_WEBHOOK_URL, undefined);
+});
+
+test("strict Worker validation requires runtime bindings", () => {
+  assert.throws(
+    () => validateWorkerEnvironment({ ENVIRONMENT_VALIDATION_MODE: "strict" }),
+    /DB Worker binding is required.*ASSETS Worker binding is required.*IMAGES Worker binding is required/,
+  );
+  const environment = validateWorkerEnvironment({
+    ENVIRONMENT_VALIDATION_MODE: "strict",
+    DB: {},
+    ASSETS: {},
+    IMAGES: {},
+    NOTIFICATION_EMAIL_WEBHOOK_URL: "https://mail.example.com/notify",
+    NOTIFICATION_EMAIL_TOKEN: "notification-test-token",
+  });
+  assert.equal(environment.ENVIRONMENT_VALIDATION_MODE, "strict");
+  assert.equal(
+    environment.NOTIFICATION_EMAIL_WEBHOOK_URL,
+    "https://mail.example.com/notify",
+  );
+});
+
+test("Worker validates optional service endpoints before handling traffic", async () => {
+  assert.throws(
+    () =>
+      validateWorkerEnvironment({
+        ENVIRONMENT_VALIDATION_MODE: "test",
+        NOTIFICATION_EMAIL_WEBHOOK_URL: "http://mail.example.com/notify",
+      }),
+    /Notification webhook endpoint must use HTTPS/,
+  );
+  const [worker, example] = await Promise.all([
+    import("node:fs/promises").then(({ readFile }) =>
+      readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+    ),
+    import("node:fs/promises").then(({ readFile }) =>
+      readFile(new URL("../.env.example", import.meta.url), "utf8"),
+    ),
+  ]);
+  assert.match(worker, /assertRuntimeEnvironment\(env\)/);
+  assert.match(example, /NOTIFICATION_EMAIL_WEBHOOK_URL=/);
+  assert.match(example, /NOTIFICATION_EMAIL_TOKEN=/);
 });
 
 test("monitoring environment requires HTTPS and a nontrivial token", () => {

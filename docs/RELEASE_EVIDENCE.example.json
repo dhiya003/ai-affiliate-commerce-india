@@ -1,0 +1,19 @@
+{
+  "commitSha": "replace-with-the-exact-40-character-release-commit",
+  "qualityGatePassed": false,
+  "codeqlPassed": false,
+  "productionDependencyAuditPassed": false,
+  "marketplaceValidationCompleted": false,
+  "monitoringConfigured": false,
+  "browserCompatibilityCompleted": false,
+  "domainVerified": false,
+  "partnerAccessApproved": false,
+  "rollbackVerified": false,
+  "realAffiliateTrafficEnabled": false,
+  "requestIds": [],
+  "ownerApproval": {
+    "approved": false,
+    "approvedBy": "",
+    "approvedAt": ""
+  }
+}

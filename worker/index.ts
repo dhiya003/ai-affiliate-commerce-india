@@ -6,6 +6,7 @@ import {
 } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { runDueAutomationJobs } from "../lib/automation/repository";
+import { validateWorkerEnvironment } from "../lib/env";
 import { guardRequest } from "../lib/security/request-guard";
 import {
   processDueBackgroundJobs,
@@ -15,8 +16,11 @@ import {
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
+  ENVIRONMENT_VALIDATION_MODE?: "strict" | "test";
   OPENAI_API_KEY?: string;
   OPENAI_MODEL?: string;
+  ERROR_MONITORING_WEBHOOK_URL?: string;
+  ERROR_MONITORING_TOKEN?: string;
   NOTIFICATION_EMAIL_WEBHOOK_URL?: string;
   NOTIFICATION_EMAIL_TOKEN?: string;
   IMAGES: {
@@ -29,6 +33,14 @@ interface Env {
       };
     };
   };
+}
+
+const validatedEnvironments = new WeakSet<object>();
+
+function assertRuntimeEnvironment(env: Env) {
+  if (validatedEnvironments.has(env)) return;
+  validateWorkerEnvironment(env as unknown as Record<string, unknown>);
+  validatedEnvironments.add(env);
 }
 
 interface ExecutionContext {
@@ -153,6 +165,7 @@ const worker = {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<Response> {
+    assertRuntimeEnvironment(env);
     const startedAt = performance.now();
     const url = new URL(request.url);
 
@@ -203,6 +216,7 @@ const worker = {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
+    assertRuntimeEnvironment(env);
     const scheduledAt = new Date(controller.scheduledTime);
     ctx.waitUntil(
       Promise.all([

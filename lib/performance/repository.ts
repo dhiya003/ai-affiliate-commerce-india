@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api/errors";
+import { reconcileAttributionRecords } from "./reconciliation.ts";
 import type { AttributionImport } from "./schema";
 import type { PerformanceDashboard } from "./types";
 
@@ -32,8 +33,10 @@ export async function importAttributionEvents(
   let conversionsImported = 0;
   let commissionsImported = 0;
   const importedAt = new Date().toISOString();
+  const reconciliation = reconcileAttributionRecords(input.records);
+  const importedConversions = new Set<string>();
 
-  for (const record of input.records) {
+  for (const record of reconciliation.records) {
     const link = await db
       .prepare(
         `SELECT id, marketplace FROM tracked_links
@@ -52,6 +55,7 @@ export async function importAttributionEvents(
     const externalOrderIdHash = await sha256(
       `${email}|${link.marketplace}|${record.externalOrderId}`,
     );
+    importedConversions.add(`${link.marketplace}:${externalOrderIdHash}`);
     const existing = await db
       .prepare(
         `SELECT id FROM conversion_events
@@ -130,12 +134,14 @@ export async function importAttributionEvents(
       commissionsImported += 1;
     }
     await db.batch(statements);
-    conversionsImported += 1;
+    conversionsImported = importedConversions.size;
   }
 
   return {
     conversionsImported,
     commissionsImported,
+    duplicatesRemoved: reconciliation.duplicatesRemoved,
+    reconciledOrders: reconciliation.reconciledOrders,
     importedAt,
   };
 }

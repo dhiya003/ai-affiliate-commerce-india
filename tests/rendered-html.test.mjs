@@ -17,6 +17,7 @@ async function render(pathname = "/", headers = {}, environment = {}) {
       headers: { accept: "text/html", ...headers },
     }),
     {
+      ENVIRONMENT_VALIDATION_MODE: "test",
       ASSETS: {
         fetch: async () => new Response("Not found", { status: 404 }),
       },
