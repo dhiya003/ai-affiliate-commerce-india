@@ -19,7 +19,7 @@ const optionalHttpsUrl = z.preprocess(
         }
       },
       {
-        message: "Monitoring endpoint must use HTTPS.",
+        message: "Webhook endpoint must use HTTPS.",
       },
     )
     .optional(),
@@ -39,6 +39,8 @@ const serverEnvironmentSchema = z.object({
   OPENAI_MODEL: z.string().trim().min(1).default("gpt-5.6-sol"),
   ERROR_MONITORING_WEBHOOK_URL: optionalHttpsUrl,
   ERROR_MONITORING_TOKEN: optionalString(16),
+  NOTIFICATION_EMAIL_WEBHOOK_URL: optionalHttpsUrl,
+  NOTIFICATION_EMAIL_TOKEN: optionalString(16),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
 

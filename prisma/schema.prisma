@@ -245,6 +245,9 @@ enum AutomationJobType {
   CONTENT_GENERATION
   COMPLIANCE_CHECK
   SCORE_RETRAINING
+  NOTIFICATION_SCAN
+  NOTIFICATION_DELIVERY_RETRY
+  SUMMARY_REPORT_GENERATION
 }
 
 enum AutomationJobStatus {
@@ -275,6 +278,66 @@ enum AutomationLogLevel {
   INFO
   WARN
   ERROR
+}
+
+enum NotificationType {
+  DAILY_OPPORTUNITY_SUMMARY
+  WEEKLY_PERFORMANCE_SUMMARY
+  MONTHLY_EARNINGS_SUMMARY
+  NEW_TRENDING_PRODUCT
+  PRICE_DROP
+  STOCK_RETURN
+  AFFILIATE_RULE_CHANGE
+  CAMPAIGN_PERFORMANCE
+  LOW_CONVERSION
+  HIGH_RETURN_RISK
+  FAILED_IMPORT
+  STALE_PRICE
+  BROKEN_AFFILIATE_LINK
+  COMPLIANCE_FAILURE
+  HIGH_OPPORTUNITY_PRODUCT
+}
+
+enum NotificationSeverity {
+  INFO
+  SUCCESS
+  WARNING
+  CRITICAL
+}
+
+enum DigestFrequency {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum ReportType {
+  DAILY_OPPORTUNITY
+  WEEKLY_PERFORMANCE
+  MONTHLY_EARNINGS
+}
+
+enum ReportStatus {
+  READY
+  EXPIRED
+}
+
+enum ReportFormat {
+  CSV
+  JSON
 }
 
 model User {
@@ -1298,4 +1361,77 @@ model AutomationRunLog {
 
   @@index([runId, occurredAt])
   @@index([level, occurredAt(sort: Desc)])
+}
+
+model NotificationPreference {
+  id              String          @id @default(cuid())
+  ownerEmail      String          @unique
+  inAppEnabled    Boolean         @default(true)
+  emailEnabled    Boolean         @default(false)
+  digestFrequency DigestFrequency @default(DAILY)
+  enabledTypes    Json            @default("[]")
+  quietHoursStart String?
+  quietHoursEnd   String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Notification {
+  id         String                 @id @default(cuid())
+  ownerEmail String
+  type       NotificationType
+  severity   NotificationSeverity
+  title      String
+  body       String
+  actionUrl  String?
+  entityType String?
+  entityId   String?
+  dedupeKey  String
+  metadata   Json                   @default("{}")
+  readAt     DateTime?
+  createdAt  DateTime               @default(now())
+  expiresAt  DateTime?
+  deliveries NotificationDelivery[]
+
+  @@unique([ownerEmail, dedupeKey])
+  @@index([ownerEmail, readAt, createdAt(sort: Desc)])
+  @@index([ownerEmail, type, createdAt(sort: Desc)])
+}
+
+model NotificationDelivery {
+  id                    String                     @id @default(cuid())
+  notificationId        String
+  channel               NotificationChannel
+  status                NotificationDeliveryStatus @default(PENDING)
+  provider              String?
+  externalMessageIdHash String?
+  attemptCount          Int                        @default(0)
+  nextAttemptAt         DateTime?
+  deliveredAt           DateTime?
+  errorCode             String?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  notification          Notification               @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, channel])
+  @@index([status, nextAttemptAt])
+}
+
+model GeneratedReport {
+  id          String       @id @default(cuid())
+  ownerEmail  String
+  type        ReportType
+  title       String
+  periodFrom  DateTime
+  periodTo    DateTime
+  status      ReportStatus @default(READY)
+  format      ReportFormat @default(CSV)
+  content     Json
+  rowCount    Int
+  generatedAt DateTime     @default(now())
+  expiresAt   DateTime
+
+  @@unique([ownerEmail, type, periodFrom, periodTo])
+  @@index([ownerEmail, generatedAt(sort: Desc)])
+  @@index([expiresAt])
 }

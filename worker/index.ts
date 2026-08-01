@@ -12,6 +12,8 @@ interface Env {
   DB: D1Database;
   OPENAI_API_KEY?: string;
   OPENAI_MODEL?: string;
+  NOTIFICATION_EMAIL_WEBHOOK_URL?: string;
+  NOTIFICATION_EMAIL_TOKEN?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {

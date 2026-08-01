@@ -1245,6 +1245,126 @@ export const automationRunLogs = sqliteTable(
   ],
 );
 
+export const notificationPreferences = sqliteTable(
+  "notification_preferences",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    inAppEnabled: integer("in_app_enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    emailEnabled: integer("email_enabled", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    digestFrequency: text("digest_frequency").notNull().default("DAILY"),
+    enabledTypesJson: text("enabled_types_json").notNull().default("[]"),
+    quietHoursStart: text("quiet_hours_start"),
+    quietHoursEnd: text("quiet_hours_end"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("notification_preferences_owner_unique").on(table.ownerEmail),
+  ],
+);
+
+export const notifications = sqliteTable(
+  "notifications",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    type: text("type").notNull(),
+    severity: text("severity").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    actionUrl: text("action_url"),
+    entityType: text("entity_type"),
+    entityId: text("entity_id"),
+    dedupeKey: text("dedupe_key").notNull(),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    readAt: text("read_at"),
+    createdAt: text("created_at").notNull(),
+    expiresAt: text("expires_at"),
+  },
+  (table) => [
+    uniqueIndex("notifications_owner_dedupe_unique").on(
+      table.ownerEmail,
+      table.dedupeKey,
+    ),
+    index("notifications_owner_read_time_idx").on(
+      table.ownerEmail,
+      table.readAt,
+      table.createdAt,
+    ),
+    index("notifications_owner_type_time_idx").on(
+      table.ownerEmail,
+      table.type,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const notificationDeliveries = sqliteTable(
+  "notification_deliveries",
+  {
+    id: text("id").primaryKey(),
+    notificationId: text("notification_id")
+      .notNull()
+      .references(() => notifications.id, { onDelete: "cascade" }),
+    channel: text("channel").notNull(),
+    status: text("status").notNull().default("PENDING"),
+    provider: text("provider"),
+    externalMessageIdHash: text("external_message_id_hash"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    nextAttemptAt: text("next_attempt_at"),
+    deliveredAt: text("delivered_at"),
+    errorCode: text("error_code"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("notification_deliveries_notification_channel_unique").on(
+      table.notificationId,
+      table.channel,
+    ),
+    index("notification_deliveries_status_retry_idx").on(
+      table.status,
+      table.nextAttemptAt,
+    ),
+  ],
+);
+
+export const generatedReports = sqliteTable(
+  "generated_reports",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    periodFrom: text("period_from").notNull(),
+    periodTo: text("period_to").notNull(),
+    status: text("status").notNull().default("READY"),
+    format: text("format").notNull().default("CSV"),
+    contentJson: text("content_json").notNull(),
+    rowCount: integer("row_count").notNull(),
+    generatedAt: text("generated_at").notNull(),
+    expiresAt: text("expires_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("generated_reports_owner_type_period_unique").on(
+      table.ownerEmail,
+      table.type,
+      table.periodFrom,
+      table.periodTo,
+    ),
+    index("generated_reports_owner_time_idx").on(
+      table.ownerEmail,
+      table.generatedAt,
+    ),
+    index("generated_reports_expiry_idx").on(table.expiresAt),
+  ],
+);
+
 export type ProductRecord = typeof products.$inferSelect;
 export type NewProductRecord = typeof products.$inferInsert;
 export type GeneratedContentRecord = typeof generatedContent.$inferSelect;

@@ -4,6 +4,11 @@ import {
   listScoringWeightVersions,
 } from "@/lib/optimization/repository";
 import { refreshLearningProfiles } from "@/lib/learning/repository";
+import {
+  generateNotificationAlerts,
+  retryDueNotificationDeliveries,
+} from "@/lib/notifications/repository";
+import { generateReport } from "@/lib/notifications/reports";
 import { nextCronOccurrence } from "./cron.ts";
 import type { AutomationJobUpdate } from "./schema";
 import type { AutomationJob, AutomationRun } from "./types";
@@ -289,6 +294,87 @@ async function executeJobHandler(
       metrics: { owners: owners.results.length, refreshedProfiles, snapshots },
       message:
         "Refreshed learning and quality evidence; no scoring version was activated.",
+    };
+  }
+  if (job.job_type === "NOTIFICATION_SCAN") {
+    const owners = await db
+      .prepare(
+        `SELECT owner_email FROM notification_preferences
+         UNION SELECT owner_email FROM campaigns
+         UNION SELECT owner_email FROM recommendation_feedback
+         ORDER BY owner_email LIMIT 250`,
+      )
+      .all<{ owner_email: string }>();
+    let evaluated = 0;
+    let created = 0;
+    for (const owner of owners.results) {
+      const result = await generateNotificationAlerts(owner.owner_email);
+      evaluated += result.evaluated;
+      created += result.created;
+    }
+    return {
+      status: "SUCCEEDED",
+      processedCount: owners.results.length,
+      succeededCount: owners.results.length,
+      failedCount: 0,
+      metrics: { owners: owners.results.length, evaluated, created },
+      message: `Evaluated ${evaluated} alert candidates for ${owners.results.length} owners.`,
+    };
+  }
+  if (job.job_type === "NOTIFICATION_DELIVERY_RETRY") {
+    const result = await retryDueNotificationDeliveries();
+    return {
+      status: "SUCCEEDED",
+      processedCount: result.processed,
+      succeededCount: result.processed,
+      failedCount: 0,
+      metrics: result,
+      message: `Processed ${result.processed} due email deliveries.`,
+    };
+  }
+  if (job.job_type === "SUMMARY_REPORT_GENERATION") {
+    const owners = await db
+      .prepare(
+        `SELECT owner_email, digest_frequency FROM notification_preferences
+         WHERE digest_frequency != 'NONE'
+         ORDER BY owner_email LIMIT 250`,
+      )
+      .all<{ owner_email: string; digest_frequency: string }>();
+    const to = new Date();
+    let generated = 0;
+    for (const owner of owners.results) {
+      const durationDays =
+        owner.digest_frequency === "MONTHLY"
+          ? 31
+          : owner.digest_frequency === "WEEKLY"
+            ? 7
+            : 1;
+      const type =
+        owner.digest_frequency === "MONTHLY"
+          ? "MONTHLY_EARNINGS"
+          : owner.digest_frequency === "WEEKLY"
+            ? "WEEKLY_PERFORMANCE"
+            : "DAILY_OPPORTUNITY";
+      await generateReport(
+        {
+          type,
+          format: "CSV",
+          from: new Date(
+            to.getTime() - durationDays * 24 * 60 * 60_000,
+          ).toISOString(),
+          to: to.toISOString(),
+        },
+        owner.owner_email,
+      );
+      generated += 1;
+    }
+    return {
+      status: "SUCCEEDED",
+      processedCount: owners.results.length,
+      succeededCount: generated,
+      failedCount: 0,
+      metrics: { owners: owners.results.length, generated },
+      message: `Generated ${generated} scheduled summary reports.`,
     };
   }
   return {

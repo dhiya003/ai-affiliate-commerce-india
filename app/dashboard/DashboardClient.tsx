@@ -279,6 +279,7 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
             [FlaskConical, "Experiments", "/experiments", false],
             [SlidersHorizontal, "Scoring governance", "/optimization", false],
             [Workflow, "Automation", "/automation", false],
+            [Bell, "Notifications", "/notifications", false],
             [Bookmark, "Saved", "/saved", false],
           ].map(([Icon, label, href, active]) => {
             const NavIcon = Icon as typeof LayoutDashboard;

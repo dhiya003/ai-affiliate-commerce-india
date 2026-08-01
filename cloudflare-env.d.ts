@@ -18,5 +18,7 @@ declare namespace Cloudflare {
     OPENAI_MODEL?: string;
     ERROR_MONITORING_WEBHOOK_URL?: string;
     ERROR_MONITORING_TOKEN?: string;
+    NOTIFICATION_EMAIL_WEBHOOK_URL?: string;
+    NOTIFICATION_EMAIL_TOKEN?: string;
   }
 }
