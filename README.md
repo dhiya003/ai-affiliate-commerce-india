@@ -121,6 +121,20 @@ docker compose --profile postgres up --build
 only after required checks and review pass. Full details are in
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Release readiness
+
+Production release readiness is manually gated by
+`.github/workflows/release-readiness.yml`. The workflow accepts only the exact
+commit currently at `main`, reruns the complete quality and production dependency
+gates, requires a completed JSON evidence file based on
+`docs/RELEASE_EVIDENCE.example.json`, and uses the protected
+`production-release` GitHub environment for owner review. Configure required
+reviewers on that environment before using the workflow.
+
+The readiness workflow deliberately does not deploy or enable affiliate traffic.
+Real marketplace transports and notification endpoints remain disabled until
+their evidence fields and a separate owner-controlled activation are approved.
+
 ## Security
 
 Do not report security issues in public issues. Follow

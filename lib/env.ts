@@ -6,24 +6,23 @@ const optionalString = (minimumLength = 1) =>
     z.string().min(minimumLength).optional(),
   );
 
-const optionalHttpsUrl = z.preprocess(
-  (value) => (value === "" ? undefined : value),
-  z
-    .url()
-    .refine(
-      (value) => {
-        try {
-          return new URL(value).protocol === "https:";
-        } catch {
-          return false;
-        }
-      },
-      {
-        message: "Monitoring endpoint must use HTTPS.",
-      },
-    )
-    .optional(),
-);
+const optionalHttpsUrl = (message: string) =>
+  z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z
+      .url()
+      .refine(
+        (value) => {
+          try {
+            return new URL(value).protocol === "https:";
+          } catch {
+            return false;
+          }
+        },
+        { message },
+      )
+      .optional(),
+  );
 
 const serverEnvironmentSchema = z.object({
   NODE_ENV: z
@@ -37,12 +36,62 @@ const serverEnvironmentSchema = z.object({
   AI_PROVIDER: z.enum(["openai"]).default("openai"),
   OPENAI_API_KEY: optionalString(),
   OPENAI_MODEL: z.string().trim().min(1).default("gpt-5.6-sol"),
-  ERROR_MONITORING_WEBHOOK_URL: optionalHttpsUrl,
+  ERROR_MONITORING_WEBHOOK_URL: optionalHttpsUrl(
+    "Monitoring endpoint must use HTTPS.",
+  ),
   ERROR_MONITORING_TOKEN: optionalString(16),
+  NOTIFICATION_EMAIL_WEBHOOK_URL: optionalHttpsUrl(
+    "Notification webhook endpoint must use HTTPS.",
+  ),
+  NOTIFICATION_EMAIL_TOKEN: optionalString(16),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
 
+const workerEnvironmentSchema = z
+  .object({
+    ENVIRONMENT_VALIDATION_MODE: z.enum(["strict", "test"]).default("strict"),
+    DB: z.unknown().optional(),
+    ASSETS: z.unknown().optional(),
+    IMAGES: z.unknown().optional(),
+    OPENAI_API_KEY: optionalString(),
+    OPENAI_MODEL: z.string().trim().min(1).default("gpt-5.6-sol"),
+    ERROR_MONITORING_WEBHOOK_URL: optionalHttpsUrl(
+      "Monitoring endpoint must use HTTPS.",
+    ),
+    ERROR_MONITORING_TOKEN: optionalString(16),
+    NOTIFICATION_EMAIL_WEBHOOK_URL: optionalHttpsUrl(
+      "Notification webhook endpoint must use HTTPS.",
+    ),
+    NOTIFICATION_EMAIL_TOKEN: optionalString(16),
+  })
+  .superRefine((environment, context) => {
+    if (environment.ENVIRONMENT_VALIDATION_MODE !== "strict") return;
+    for (const binding of ["DB", "ASSETS", "IMAGES"] as const) {
+      if (
+        environment[binding] == null ||
+        typeof environment[binding] !== "object"
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: [binding],
+          message: `${binding} Worker binding is required in strict mode.`,
+        });
+      }
+    }
+  });
+
 export type ServerEnvironment = z.infer<typeof serverEnvironmentSchema>;
+export type WorkerEnvironment = z.infer<typeof workerEnvironmentSchema>;
+
+function validationError(
+  label: string,
+  issues: Array<{ path: PropertyKey[]; message: string }>,
+) {
+  const details = issues
+    .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+    .join("; ");
+  return new Error(`Invalid ${label} environment: ${details}`);
+}
 
 export function validateEnvironment(
   source: NodeJS.ProcessEnv = process.env,
@@ -50,13 +99,19 @@ export function validateEnvironment(
   const result = serverEnvironmentSchema.safeParse(source);
 
   if (!result.success) {
-    const details = result.error.issues
-      .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
-      .join("; ");
-
-    throw new Error(`Invalid server environment: ${details}`);
+    throw validationError("server", result.error.issues);
   }
 
+  return result.data;
+}
+
+export function validateWorkerEnvironment(
+  source: Record<string, unknown>,
+): WorkerEnvironment {
+  const result = workerEnvironmentSchema.safeParse(source);
+  if (!result.success) {
+    throw validationError("Worker", result.error.issues);
+  }
   return result.data;
 }
 

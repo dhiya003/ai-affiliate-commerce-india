@@ -1,0 +1,73 @@
+name: Release readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_commit:
+        description: Exact 40-character commit SHA to verify
+        required: true
+        type: string
+      evidence_path:
+        description: Repository path to completed JSON release evidence
+        required: true
+        default: docs/RELEASE_EVIDENCE.json
+        type: string
+      owner_approval_statement:
+        description: Type exactly “I approve this release candidate”
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-readiness-${{ inputs.release_commit }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify evidence and owner approval
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production-release
+    steps:
+      - name: Reject non-main release commits
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT: ${{ inputs.release_commit }}
+        run: |
+          git ls-remote "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" refs/heads/main \
+            | awk '{print $1}' \
+            | grep -Fx "${RELEASE_COMMIT}"
+
+      - name: Check out exact release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_commit }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run complete quality gate
+        run: npm run check
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Verify release evidence
+        env:
+          RELEASE_COMMIT: ${{ inputs.release_commit }}
+          RELEASE_EVIDENCE_PATH: ${{ inputs.evidence_path }}
+          RELEASE_APPROVAL_STATEMENT: ${{ inputs.owner_approval_statement }}
+        run: node scripts/verify-release-readiness.mjs
+
+      - name: Confirm deployment remains owner-controlled
+        run: |
+          echo "Readiness verified. This workflow intentionally does not deploy or enable affiliate traffic."
+          echo "A separately protected owner-controlled deployment must consume this successful result."

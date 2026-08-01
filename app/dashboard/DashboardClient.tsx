@@ -279,8 +279,12 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
             [FlaskConical, "Experiments", "/experiments", false],
             [SlidersHorizontal, "Scoring governance", "/optimization", false],
             [Workflow, "Automation", "/automation", false],
+            [Bell, "Notifications", "/notifications", false],
+            [Settings, "Administration", "/admin", false],
             [Bookmark, "Saved", "/saved", false],
           ].map(([Icon, label, href, active]) => {
+            if (label === "Administration" && user.role !== "ADMIN")
+              return null;
             const NavIcon = Icon as typeof LayoutDashboard;
             return (
               <Link

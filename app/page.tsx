@@ -147,6 +147,13 @@ export default async function Home() {
             </article>
           ))}
         </section>
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[#dfe3dc] py-5 text-xs text-[#69746c]">
+          <span>Affiliate decisions require human verification.</span>
+          <span className="flex gap-4">
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+          </span>
+        </footer>
       </div>
     </main>
   );

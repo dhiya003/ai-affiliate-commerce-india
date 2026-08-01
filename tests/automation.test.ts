@@ -35,6 +35,21 @@ test("next cron occurrence is deterministic and advances beyond the cursor", () 
   );
 });
 
+test("next cron occurrence honors the configured India timezone", () => {
+  assert.equal(
+    nextCronOccurrence(
+      "30 6 * * *",
+      new Date("2026-07-31T23:00:00.000Z"),
+      "Asia/Kolkata",
+    ).toISOString(),
+    "2026-08-01T01:00:00.000Z",
+  );
+  assert.throws(
+    () => nextCronOccurrence("0 6 * * *", new Date(), "Europe/London"),
+    /UNSUPPORTED_AUTOMATION_TIMEZONE/,
+  );
+});
+
 test("job policy validates timeout, attempts, retry delay, and manual action", () => {
   assert.equal(
     automationJobUpdateSchema.safeParse({

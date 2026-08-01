@@ -5,6 +5,7 @@ import {
   attributionImportSchema,
   performanceQuerySchema,
 } from "../lib/performance/schema.ts";
+import { reconcileAttributionRecords } from "../lib/performance/reconciliation.ts";
 
 const attribution = {
   trackingId: `trk_${"a".repeat(32)}`,
@@ -40,6 +41,39 @@ test("attribution imports are bounded and validate conversion and commission sta
   );
 });
 
+test("attribution reconciliation removes duplicates and applies lifecycle evidence in time order", () => {
+  const delivered = {
+    ...attribution,
+    orderStatus: "DELIVERED" as const,
+    convertedAt: "2026-07-31T12:00:00.000Z",
+    commission: {
+      ...attribution.commission,
+      status: "PAID" as const,
+      observedAt: "2026-07-31T13:00:00.000Z",
+    },
+  };
+  const result = reconcileAttributionRecords([
+    delivered,
+    attribution,
+    attribution,
+  ]);
+  assert.equal(result.duplicatesRemoved, 1);
+  assert.equal(result.reconciledOrders, 1);
+  assert.equal(result.records[0]?.orderStatus, "CONFIRMED");
+  assert.equal(result.records[1]?.orderStatus, "DELIVERED");
+});
+
+test("attribution reconciliation rejects contradictory states at one timestamp", () => {
+  assert.throws(
+    () =>
+      reconcileAttributionRecords([
+        attribution,
+        { ...attribution, orderStatus: "CANCELLED" },
+      ]),
+    /CONFLICTING_ATTRIBUTION_OBSERVATION/,
+  );
+});
+
 test("performance ranges default to 30 days and reject reversed windows", () => {
   const range = performanceQuerySchema.parse({
     to: "2026-07-29T00:00:00.000Z",
@@ -66,6 +100,7 @@ test("conversion import hashes order identity and remains owner scoped", async (
   );
   assert.match(repository, /tracking_id = \? AND owner_email = \?/);
   assert.match(repository, /id = \? AND owner_email = \?/);
+  assert.match(repository, /reconcileAttributionRecords\(input\.records\)/);
   assert.doesNotMatch(repository, /external_order_id[^_]/);
 });
 

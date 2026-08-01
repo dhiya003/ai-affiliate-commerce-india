@@ -12,16 +12,23 @@ import {
   type MeeshoProduct,
   type MyntraProduct,
 } from "../lib/ingestion/adapters/index.ts";
-import type { MarketplaceFeedClient } from "../lib/ingestion/types.ts";
+import type {
+  MarketplaceAdapter,
+  MarketplaceFeedClient,
+  MarketplaceName,
+  NormalizedProduct,
+} from "../lib/ingestion/types.ts";
 
 class FixtureClient<T> implements MarketplaceFeedClient<T> {
   private readonly products: readonly T[];
+  lastSignal: AbortSignal | undefined;
 
   constructor(products: readonly T[]) {
     this.products = products;
   }
 
-  async fetchProducts(): Promise<readonly T[]> {
+  async fetchProducts(signal?: AbortSignal): Promise<readonly T[]> {
+    this.lastSignal = signal;
     return this.products;
   }
 }
@@ -129,6 +136,76 @@ const ajio: AjioProduct = {
   imageUrl: "https://images.example.com/ajio.jpg",
   variations: [{ sku: "M-BLACK", size: "M", colour: "Black", available: true }],
 };
+
+const marketplaceHosts: Record<MarketplaceName, readonly string[]> = {
+  Amazon: ["amazon.in"],
+  Flipkart: ["flipkart.com"],
+  Meesho: ["meesho.com"],
+  Myntra: ["myntra.com"],
+  AJIO: ["ajio.com"],
+};
+
+async function assertProviderContract<T>(
+  marketplace: MarketplaceName,
+  fixture: T,
+  createAdapter: (client: MarketplaceFeedClient<T>) => MarketplaceAdapter<T>,
+) {
+  const client = new FixtureClient([fixture]);
+  const adapter = createAdapter(client);
+  const controller = new AbortController();
+  const fetched = await adapter.fetch(controller.signal);
+  assert.equal(client.lastSignal, controller.signal);
+  assert.equal(adapter.marketplace, marketplace);
+  assert.equal(adapter.sourceType, "API");
+  assert.equal(fetched.length, 1);
+  const normalized: NormalizedProduct = adapter.normalize(fetched[0]!);
+  assert.equal(normalized.marketplace, marketplace);
+  assert.ok(normalized.marketplaceProductId.length > 0);
+  assert.ok(normalized.name.length > 0);
+  assert.ok(normalized.currentPrice > 0);
+  assert.ok(normalized.reviewCount >= 0);
+  assert.ok(normalized.confidence >= 0 && normalized.confidence <= 100);
+  assert.ok(Number.isFinite(Date.parse(normalized.sourceTimestamp)));
+  for (const value of [normalized.productUrl, normalized.affiliateUrl]) {
+    if (!value) continue;
+    const url = new URL(value);
+    assert.equal(url.protocol, "https:");
+    assert.ok(
+      marketplaceHosts[marketplace].some(
+        (host) => url.hostname === host || url.hostname.endsWith(`.${host}`),
+      ),
+    );
+  }
+  assert.equal(typeof normalized.sourceAttributes, "object");
+}
+
+test("all marketplace providers satisfy the shared fetch and normalization contract", async () => {
+  await assertProviderContract(
+    "Amazon",
+    amazon,
+    (client) => new AmazonAdapter(client),
+  );
+  await assertProviderContract(
+    "Flipkart",
+    flipkart,
+    (client) => new FlipkartAdapter(client),
+  );
+  await assertProviderContract(
+    "Meesho",
+    meesho,
+    (client) => new MeeshoAdapter(client),
+  );
+  await assertProviderContract(
+    "Myntra",
+    myntra,
+    (client) => new MyntraAdapter(client),
+  );
+  await assertProviderContract(
+    "AJIO",
+    ajio,
+    (client) => new AjioAdapter(client),
+  );
+});
 
 test("Amazon adapter validates identifiers, URLs, commerce, and availability", async () => {
   const adapter = new AmazonAdapter(new FixtureClient([amazon]));

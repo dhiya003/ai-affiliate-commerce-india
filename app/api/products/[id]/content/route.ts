@@ -1,4 +1,5 @@
 import { ApiError, handleApiError } from "@/lib/api/errors";
+import { isFeatureEnabled } from "@/lib/admin/flags";
 import { apiSuccess } from "@/lib/api/response";
 import { requireApiUser } from "@/lib/auth/api-user";
 import { generateContent } from "@/lib/content/provider";
@@ -38,6 +39,13 @@ export async function POST(_request: Request, context: RouteContext) {
   const requestId = crypto.randomUUID();
   try {
     const user = await requireApiUser();
+    if (!(await isFeatureEnabled("ai-content-generation"))) {
+      throw new ApiError(
+        503,
+        "FEATURE_DISABLED",
+        "AI content generation is temporarily disabled.",
+      );
+    }
     const { id } = await context.params;
     const product = await visibleProduct(id, user.email);
     const generation = await generateContent(product);
