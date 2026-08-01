@@ -6,24 +6,23 @@ const optionalString = (minimumLength = 1) =>
     z.string().min(minimumLength).optional(),
   );
 
-const optionalHttpsUrl = z.preprocess(
-  (value) => (value === "" ? undefined : value),
-  z
-    .url()
-    .refine(
-      (value) => {
-        try {
-          return new URL(value).protocol === "https:";
-        } catch {
-          return false;
-        }
-      },
-      {
-        message: "Webhook endpoint must use HTTPS.",
-      },
-    )
-    .optional(),
-);
+const optionalHttpsUrl = (message: string) =>
+  z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z
+      .url()
+      .refine(
+        (value) => {
+          try {
+            return new URL(value).protocol === "https:";
+          } catch {
+            return false;
+          }
+        },
+        { message },
+      )
+      .optional(),
+  );
 
 const serverEnvironmentSchema = z.object({
   NODE_ENV: z
@@ -37,9 +36,13 @@ const serverEnvironmentSchema = z.object({
   AI_PROVIDER: z.enum(["openai"]).default("openai"),
   OPENAI_API_KEY: optionalString(),
   OPENAI_MODEL: z.string().trim().min(1).default("gpt-5.6-sol"),
-  ERROR_MONITORING_WEBHOOK_URL: optionalHttpsUrl,
+  ERROR_MONITORING_WEBHOOK_URL: optionalHttpsUrl(
+    "Monitoring endpoint must use HTTPS.",
+  ),
   ERROR_MONITORING_TOKEN: optionalString(16),
-  NOTIFICATION_EMAIL_WEBHOOK_URL: optionalHttpsUrl,
+  NOTIFICATION_EMAIL_WEBHOOK_URL: optionalHttpsUrl(
+    "Notification webhook endpoint must use HTTPS.",
+  ),
   NOTIFICATION_EMAIL_TOKEN: optionalString(16),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });

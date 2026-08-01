@@ -4,6 +4,7 @@ import {
   listScoringWeightVersions,
 } from "@/lib/optimization/repository";
 import { refreshLearningProfiles } from "@/lib/learning/repository";
+import { resolveMarketplaceSourceRoutes } from "@/lib/ingestion/fallback";
 import {
   generateNotificationAlerts,
   retryDueNotificationDeliveries,
@@ -230,6 +231,21 @@ async function executeJobHandler(
   db: D1Database,
   job: JobRow,
 ): Promise<HandlerResult> {
+  if (job.job_type === "PRODUCT_INGESTION") {
+    const routes = await resolveMarketplaceSourceRoutes(db);
+    const partnerRoutes = routes.filter(({ mode }) => mode === "PARTNER");
+    return {
+      status: "SKIPPED",
+      processedCount: routes.length,
+      succeededCount: 0,
+      failedCount: routes.filter(({ mode }) => mode === "UNAVAILABLE").length,
+      metrics: { routes, partnerRoutes: partnerRoutes.length },
+      message:
+        partnerRoutes.length > 0
+          ? "Partner routes are available, but their credentialed transport handler is not configured."
+          : "Partner sources are unavailable; verified manual ingestion remains the active fallback.",
+    };
+  }
   if (job.job_type === "TOP_10_GENERATION") {
     const rows = await db
       .prepare(

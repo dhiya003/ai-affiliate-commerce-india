@@ -20,7 +20,8 @@
     "db:seed": "prisma db seed",
     "db:validate": "prisma validate",
     "db:generate:site": "drizzle-kit generate",
-    "verify:core": "node scripts/verify-core-workflow.mjs"
+    "verify:core": "node scripts/verify-core-workflow.mjs",
+    "test:load": "node scripts/load-test.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.1",

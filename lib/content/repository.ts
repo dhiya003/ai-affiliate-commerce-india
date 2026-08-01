@@ -64,9 +64,8 @@ export async function saveGeneratedContent(
 ): Promise<GeneratedContent> {
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
-  await (
-    await database()
-  )
+  const db = await database();
+  await db
     .prepare(
       `INSERT INTO generated_content (
         id, product_id, created_by_email, content_json, prompt_version,
@@ -85,6 +84,30 @@ export async function saveGeneratedContent(
       createdAt,
     )
     .run();
+
+  if (generation.provider === "openai" && generation.usage) {
+    await db
+      .prepare(
+        `INSERT INTO usage_cost_events (
+          id, owner_email, provider, service, model, units, cost_inr,
+          metadata_json, occurred_at
+        ) VALUES (?, ?, 'openai', 'AI', ?, ?, 0, ?, ?)`,
+      )
+      .bind(
+        crypto.randomUUID(),
+        email,
+        generation.providerModel,
+        generation.usage.totalTokens,
+        JSON.stringify({
+          inputTokens: generation.usage.inputTokens,
+          outputTokens: generation.usage.outputTokens,
+          pricingStatus: "UNCONFIGURED",
+          requestIdStoredSeparately: Boolean(generation.requestId),
+        }),
+        createdAt,
+      )
+      .run();
+  }
 
   return {
     id,

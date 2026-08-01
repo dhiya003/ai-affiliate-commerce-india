@@ -1365,6 +1365,224 @@ export const generatedReports = sqliteTable(
   ],
 );
 
+export const applicationUsers = sqliteTable(
+  "application_users",
+  {
+    email: text("email").primaryKey(),
+    displayName: text("display_name"),
+    role: text("role").notNull().default("USER"),
+    status: text("status").notNull().default("ACTIVE"),
+    lastSeenAt: text("last_seen_at"),
+    suspiciousLoginCount: integer("suspicious_login_count")
+      .notNull()
+      .default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("application_users_status_role_idx").on(table.status, table.role),
+    index("application_users_last_seen_idx").on(table.lastSeenAt),
+  ],
+);
+
+export const featureFlags = sqliteTable(
+  "feature_flags",
+  {
+    key: text("key").primaryKey(),
+    description: text("description").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+    rolloutPercent: integer("rollout_percent").notNull().default(0),
+    updatedByEmail: text("updated_by_email").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("feature_flags_enabled_idx").on(table.enabled)],
+);
+
+export const managedTemplates = sqliteTable(
+  "managed_templates",
+  {
+    id: text("id").primaryKey(),
+    kind: text("kind").notNull(),
+    name: text("name").notNull(),
+    version: integer("version").notNull().default(1),
+    content: text("content").notNull(),
+    status: text("status").notNull().default("DRAFT"),
+    createdByEmail: text("created_by_email").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("managed_templates_kind_name_version_unique").on(
+      table.kind,
+      table.name,
+      table.version,
+    ),
+    index("managed_templates_kind_status_idx").on(table.kind, table.status),
+  ],
+);
+
+export const dataRetentionPolicies = sqliteTable(
+  "data_retention_policies",
+  {
+    key: text("key").primaryKey(),
+    description: text("description").notNull(),
+    retentionDays: integer("retention_days").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    updatedByEmail: text("updated_by_email").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("data_retention_enabled_idx").on(table.enabled)],
+);
+
+export const auditEvents = sqliteTable(
+  "audit_events",
+  {
+    id: text("id").primaryKey(),
+    actorEmail: text("actor_email").notNull(),
+    action: text("action").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id"),
+    outcome: text("outcome").notNull(),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    occurredAt: text("occurred_at").notNull(),
+  },
+  (table) => [
+    index("audit_events_actor_time_idx").on(table.actorEmail, table.occurredAt),
+    index("audit_events_entity_time_idx").on(
+      table.entityType,
+      table.entityId,
+      table.occurredAt,
+    ),
+  ],
+);
+
+export const securityEvents = sqliteTable(
+  "security_events",
+  {
+    id: text("id").primaryKey(),
+    severity: text("severity").notNull(),
+    eventType: text("event_type").notNull(),
+    actorEmail: text("actor_email"),
+    fingerprintHash: text("fingerprint_hash"),
+    region: text("region"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    occurredAt: text("occurred_at").notNull(),
+    resolvedAt: text("resolved_at"),
+    resolvedByEmail: text("resolved_by_email"),
+  },
+  (table) => [
+    index("security_events_severity_time_idx").on(
+      table.severity,
+      table.occurredAt,
+    ),
+    index("security_events_type_time_idx").on(
+      table.eventType,
+      table.occurredAt,
+    ),
+  ],
+);
+
+export const usageCostEvents = sqliteTable(
+  "usage_cost_events",
+  {
+    id: text("id").primaryKey(),
+    ownerEmail: text("owner_email"),
+    provider: text("provider").notNull(),
+    service: text("service").notNull(),
+    model: text("model"),
+    marketplace: text("marketplace"),
+    units: integer("units").notNull().default(0),
+    costInr: real("cost_inr").notNull().default(0),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    occurredAt: text("occurred_at").notNull(),
+  },
+  (table) => [
+    index("usage_cost_service_time_idx").on(table.service, table.occurredAt),
+    index("usage_cost_owner_time_idx").on(table.ownerEmail, table.occurredAt),
+    index("usage_cost_marketplace_time_idx").on(
+      table.marketplace,
+      table.occurredAt,
+    ),
+  ],
+);
+
+export const backupRuns = sqliteTable(
+  "backup_runs",
+  {
+    id: text("id").primaryKey(),
+    status: text("status").notNull(),
+    scope: text("scope").notNull(),
+    storageReferenceHash: text("storage_reference_hash"),
+    initiatedByEmail: text("initiated_by_email").notNull(),
+    startedAt: text("started_at").notNull(),
+    completedAt: text("completed_at"),
+    restoreTestedAt: text("restore_tested_at"),
+    errorCode: text("error_code"),
+  },
+  (table) => [
+    index("backup_runs_status_time_idx").on(table.status, table.startedAt),
+    index("backup_runs_restore_test_idx").on(table.restoreTestedAt),
+  ],
+);
+
+export const operationalMetrics = sqliteTable(
+  "operational_metrics",
+  {
+    id: text("id").primaryKey(),
+    metricName: text("metric_name").notNull(),
+    value: real("value").notNull(),
+    unit: text("unit").notNull(),
+    dimensionsJson: text("dimensions_json").notNull().default("{}"),
+    recordedAt: text("recorded_at").notNull(),
+  },
+  (table) => [
+    index("operational_metrics_name_time_idx").on(
+      table.metricName,
+      table.recordedAt,
+    ),
+  ],
+);
+
+export const backgroundQueueJobs = sqliteTable(
+  "background_queue_jobs",
+  {
+    id: text("id").primaryKey(),
+    queueName: text("queue_name").notNull(),
+    jobType: text("job_type").notNull(),
+    payloadJson: text("payload_json").notNull().default("{}"),
+    status: text("status").notNull().default("QUEUED"),
+    attempt: integer("attempt").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(3),
+    nextAttemptAt: text("next_attempt_at").notNull(),
+    lockedAt: text("locked_at"),
+    completedAt: text("completed_at"),
+    errorCode: text("error_code"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("background_queue_due_idx").on(
+      table.queueName,
+      table.status,
+      table.nextAttemptAt,
+    ),
+    index("background_queue_type_time_idx").on(table.jobType, table.createdAt),
+  ],
+);
+
+export const rateLimitBuckets = sqliteTable(
+  "rate_limit_buckets",
+  {
+    bucketKey: text("bucket_key").primaryKey(),
+    requestCount: integer("request_count").notNull().default(0),
+    windowStartedAt: text("window_started_at").notNull(),
+    expiresAt: text("expires_at").notNull(),
+  },
+  (table) => [index("rate_limit_expiry_idx").on(table.expiresAt)],
+);
+
 export type ProductRecord = typeof products.$inferSelect;
 export type NewProductRecord = typeof products.$inferInsert;
 export type GeneratedContentRecord = typeof generatedContent.$inferSelect;

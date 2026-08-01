@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api/errors";
+import { isFeatureEnabled } from "@/lib/admin/flags";
 import {
   deliverNotificationEmail,
   type EmailDeliveryResult,
@@ -154,6 +155,17 @@ async function attemptEmailDelivery(
 ) {
   const db = await database();
   const now = new Date();
+  if (!(await isFeatureEnabled("email-notifications"))) {
+    await db
+      .prepare(
+        `UPDATE notification_deliveries SET status = 'SKIPPED',
+          next_attempt_at = NULL, error_code = 'FEATURE_DISABLED', updated_at = ?
+         WHERE notification_id = ? AND channel = 'EMAIL'`,
+      )
+      .bind(now.toISOString(), notificationId)
+      .run();
+    return;
+  }
   if (inQuietHours(preference.quietHoursStart, preference.quietHoursEnd, now)) {
     await db
       .prepare(

@@ -6,6 +6,11 @@ import {
 } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { runDueAutomationJobs } from "../lib/automation/repository";
+import { guardRequest } from "../lib/security/request-guard";
+import {
+  processDueBackgroundJobs,
+  seedMaintenanceQueue,
+} from "../lib/queue/repository";
 
 interface Env {
   ASSETS: Fetcher;
@@ -73,8 +78,17 @@ function finalizeResponse(
       "max-age=31536000; includeSubDomains",
     );
   }
-  if (new URL(request.url).pathname.startsWith("/api/")) {
-    headers.set("cache-control", "no-store");
+  const pathname = new URL(request.url).pathname;
+  if (pathname.startsWith("/api/")) {
+    const privatelyCacheable =
+      request.method === "GET" &&
+      (pathname === "/api/policies" || pathname === "/api/products");
+    headers.set(
+      "cache-control",
+      privatelyCacheable
+        ? "private, max-age=15, stale-while-revalidate=30"
+        : "no-store",
+    );
   }
 
   const requestId = headers.get("x-request-id") ?? crypto.randomUUID();
@@ -97,6 +111,34 @@ function finalizeResponse(
     statusText: response.statusText,
     headers,
   });
+}
+
+async function recordRequestMetric(
+  db: D1Database,
+  request: Request,
+  status: number,
+  durationMs: number,
+) {
+  const pathname = new URL(request.url).pathname;
+  if (!pathname.startsWith("/api/")) return;
+  await db
+    .prepare(
+      `INSERT INTO operational_metrics (
+        id, metric_name, value, unit, dimensions_json, recorded_at
+      ) VALUES (?, 'api.request_duration', ?, 'milliseconds', ?, ?)`,
+    )
+    .bind(
+      crypto.randomUUID(),
+      durationMs,
+      JSON.stringify({
+        route: routePattern(pathname),
+        method: request.method,
+        status,
+        error: status >= 500,
+      }),
+      new Date().toISOString(),
+    )
+    .run();
 }
 
 // Image security config. SVG sources with .svg extension auto-skip the
@@ -133,7 +175,27 @@ const worker = {
       return finalizeResponse(response, request, startedAt);
     }
 
+    const blocked = await guardRequest(request, env.DB);
+    if (blocked) return finalizeResponse(blocked, request, startedAt);
+
     const response = await handler.fetch(request, env, ctx);
+    ctx.waitUntil(
+      recordRequestMetric(
+        env.DB,
+        request,
+        response.status,
+        Math.round(performance.now() - startedAt),
+      ).catch((error) => {
+        console.error(
+          JSON.stringify({
+            timestamp: new Date().toISOString(),
+            level: "error",
+            event: "operational.metric.write_failed",
+            message: error instanceof Error ? error.message : "unknown",
+          }),
+        );
+      }),
+    );
     return finalizeResponse(response, request, startedAt);
   },
   async scheduled(
@@ -141,20 +203,26 @@ const worker = {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
+    const scheduledAt = new Date(controller.scheduledTime);
     ctx.waitUntil(
-      runDueAutomationJobs(env.DB, new Date(controller.scheduledTime)).then(
-        ({ retries, scheduled }) => {
-          console.info(
-            JSON.stringify({
-              timestamp: new Date().toISOString(),
-              level: "info",
-              event: "automation.scheduler.completed",
-              retryCount: retries.length,
-              scheduledCount: scheduled.length,
-            }),
-          );
-        },
-      ),
+      Promise.all([
+        runDueAutomationJobs(env.DB, scheduledAt),
+        seedMaintenanceQueue(env.DB, scheduledAt).then(() =>
+          processDueBackgroundJobs(env.DB, scheduledAt),
+        ),
+      ]).then(([automation, queue]) => {
+        console.info(
+          JSON.stringify({
+            timestamp: new Date().toISOString(),
+            level: "info",
+            event: "automation.scheduler.completed",
+            retryCount: automation.retries.length,
+            scheduledCount: automation.scheduled.length,
+            queueProcessed: queue.processed,
+            queueFailed: queue.failed,
+          }),
+        );
+      }),
     );
   },
 };

@@ -17,6 +17,11 @@ export interface ContentGenerationResult {
   provider: string;
   providerModel: string;
   requestId: string | null;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  } | null;
 }
 
 const contentJsonSchema = {
@@ -89,6 +94,20 @@ const contentJsonSchema = {
   },
 } as const;
 
+function localFallback(
+  product: Product,
+  provider: "built-in" | "built-in-fallback",
+): ContentGenerationResult {
+  return {
+    content: generateLocalContent(product),
+    promptVersion: CONTENT_PROMPT_VERSION,
+    provider,
+    providerModel: "affiliate-template-v1",
+    requestId: null,
+    usage: null,
+  };
+}
+
 export async function generateContent(
   product: Product,
 ): Promise<ContentGenerationResult> {
@@ -97,13 +116,7 @@ export async function generateContent(
   const model = env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
 
   if (!apiKey) {
-    return {
-      content: generateLocalContent(product),
-      promptVersion: CONTENT_PROMPT_VERSION,
-      provider: "built-in",
-      providerModel: "affiliate-template-v1",
-      requestId: null,
-    };
+    return localFallback(product, "built-in");
   }
 
   let response: Response;
@@ -129,14 +142,8 @@ export async function generateContent(
       }),
       signal: AbortSignal.timeout(35_000),
     });
-  } catch (error) {
-    throw new ApiError(
-      502,
-      "AI_PROVIDER_UNAVAILABLE",
-      error instanceof Error && error.name === "TimeoutError"
-        ? "Content generation timed out. Please try again."
-        : "The AI provider is temporarily unavailable.",
-    );
+  } catch {
+    return localFallback(product, "built-in-fallback");
   }
 
   const payload = (await response.json()) as {
@@ -144,14 +151,24 @@ export async function generateContent(
     error?: { message?: string };
     output_text?: string;
     output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+    usage?: {
+      input_tokens?: number;
+      output_tokens?: number;
+      total_tokens?: number;
+    };
   };
   if (!response.ok) {
+    if (
+      response.status === 408 ||
+      response.status === 429 ||
+      response.status >= 500
+    ) {
+      return localFallback(product, "built-in-fallback");
+    }
     throw new ApiError(
-      response.status === 429 ? 429 : 502,
-      response.status === 429 ? "AI_RATE_LIMITED" : "AI_PROVIDER_ERROR",
-      response.status === 429
-        ? "The content generator is busy. Please retry shortly."
-        : "Content generation failed. Please try again.",
+      502,
+      "AI_PROVIDER_ERROR",
+      "Content generation failed. Please try again.",
     );
   }
 
@@ -190,5 +207,15 @@ export async function generateContent(
     provider: "openai",
     providerModel: model,
     requestId: payload.id ?? null,
+    usage: payload.usage
+      ? {
+          inputTokens: payload.usage.input_tokens ?? 0,
+          outputTokens: payload.usage.output_tokens ?? 0,
+          totalTokens:
+            payload.usage.total_tokens ??
+            (payload.usage.input_tokens ?? 0) +
+              (payload.usage.output_tokens ?? 0),
+        }
+      : null,
   };
 }
