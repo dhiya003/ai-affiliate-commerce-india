@@ -41,7 +41,7 @@ jobs:
             | grep -Fx "${RELEASE_COMMIT}"
 
       - name: Check out exact release commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.release_commit }}
 
