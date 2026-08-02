@@ -1,6 +1,6 @@
 import type { Product } from "@/lib/products/types";
 
-export const CONTENT_PROMPT_VERSION = "affiliate-bundle-v1.0.0";
+export const CONTENT_PROMPT_VERSION = "affiliate-bundle-v1.1.0";
 
 export const CONTENT_SYSTEM_INSTRUCTIONS = `
 You are an affiliate content strategist for Indian social-commerce creators.
@@ -34,6 +34,7 @@ export function buildContentPrompt(product: Product): string {
     "Create one complete affiliate-ready content bundle for this product.",
     "The 30-second script should be about 65–85 words; the 60-second script about 125–165 words.",
     "Use exactly three distinct reel hooks. Hashtags must start with # and contain no spaces.",
+    "Create 3–5 concise Instagram Story frames, a factual image-generation prompt that does not add unsupported product details, and mini landing-page copy with a headline, body and 3–6 bullets.",
     "Cautions must be useful purchasing considerations, not invented defects.",
     `Product facts:\n${JSON.stringify(facts, null, 2)}`,
   ].join("\n\n");

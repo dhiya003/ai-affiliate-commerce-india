@@ -42,6 +42,9 @@ test("built-in generator creates a complete affiliate-ready bundle", () => {
   assert.match(bundle.reelScript30, /affiliate link/i);
   assert.match(bundle.reelScript60, /₹999/);
   assert.ok(bundle.hashtags.length >= 6);
+  assert.ok((bundle.storyFrames?.length ?? 0) >= 3);
+  assert.match(bundle.creativeImagePrompt ?? "", /Do not invent/i);
+  assert.match(bundle.landingPageBody ?? "", /affiliate link/i);
   assert.match(bundle.affiliateDisclosure, /commission/i);
 });
 

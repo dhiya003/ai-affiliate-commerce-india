@@ -13,7 +13,8 @@ interface ContentRow {
   created_at: string;
 }
 
-async function database(): Promise<D1Database> {
+async function database(dbOverride?: D1Database): Promise<D1Database> {
+  if (dbOverride) return dbOverride;
   const { env } = await import("cloudflare:workers");
   if (!env.DB) {
     throw new ApiError(
@@ -41,9 +42,10 @@ function mapContent(row: ContentRow): GeneratedContent {
 export async function getLatestContent(
   productId: string,
   email: string,
+  dbOverride?: D1Database,
 ): Promise<GeneratedContent | null> {
   const row = await (
-    await database()
+    await database(dbOverride)
   )
     .prepare(
       `SELECT id, product_id, content_json, prompt_version, provider,
@@ -61,10 +63,11 @@ export async function saveGeneratedContent(
   productId: string,
   email: string,
   generation: ContentGenerationResult,
+  dbOverride?: D1Database,
 ): Promise<GeneratedContent> {
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
-  const db = await database();
+  const db = await database(dbOverride);
   await db
     .prepare(
       `INSERT INTO generated_content (

@@ -30,7 +30,7 @@ function listText(values: string[]): string {
 }
 
 function sections(bundle: ContentBundle): ContentSection[] {
-  return [
+  const result: ContentSection[] = [
     { key: "summary", label: "Product summary", value: bundle.summary },
     {
       key: "whyPromote",
@@ -90,6 +90,43 @@ function sections(bundle: ContentBundle): ContentSection[] {
       wide: true,
     },
   ];
+  if (bundle.storyFrames) {
+    result.splice(10, 0, {
+      key: "storyFrames",
+      label: "Instagram Story sequence",
+      value: listText(bundle.storyFrames),
+      wide: true,
+    });
+  }
+  if (bundle.creativeImagePrompt) {
+    result.splice(11, 0, {
+      key: "creativeImagePrompt",
+      label: "AI creative image prompt",
+      value: bundle.creativeImagePrompt,
+      wide: true,
+    });
+  }
+  if (bundle.landingPageHeadline && bundle.landingPageBody) {
+    result.splice(12, 0, {
+      key: "landingPageHeadline",
+      label: "Mini-site headline",
+      value: bundle.landingPageHeadline,
+    });
+    result.splice(13, 0, {
+      key: "landingPageBody",
+      label: "Mini-site body",
+      value: bundle.landingPageBody,
+      wide: true,
+    });
+  }
+  if (bundle.landingPageBullets) {
+    result.splice(14, 0, {
+      key: "landingPageBullets",
+      label: "Mini-site highlights",
+      value: listText(bundle.landingPageBullets),
+    });
+  }
+  return result;
 }
 
 export function ContentStudio({
@@ -153,8 +190,8 @@ export function ContentStudio({
                 : "Create the campaign"}
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#c6d8ca]">
-              Generate scripts, caption, hashtags, calls to action and safe
-              purchasing context from the verified product facts.
+              Generate reel scripts, Story frames, creative prompts, mini-site
+              copy and safe purchasing context from verified product facts.
             </p>
           </div>
         </div>

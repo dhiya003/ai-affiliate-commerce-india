@@ -502,11 +502,13 @@ export function ProductDetailClient({
             <ContentStudio
               productId={product.id}
               initialContent={initialGeneratedContent}
-              exportBlocked={compliance?.exportBlocked ?? false}
+              exportBlocked={!compliance || compliance.exportBlocked}
               complianceMessage={
-                compliance?.exportBlocked
-                  ? "Copy/export is blocked by one or more blocking compliance violations."
-                  : null
+                !compliance
+                  ? "Run compliance on this exact generated bundle before copying or publishing it."
+                  : compliance.exportBlocked
+                    ? "Copy/export is blocked by one or more blocking compliance violations."
+                    : null
               }
               onGenerated={() => setCompliance(null)}
             />

@@ -69,6 +69,19 @@ export function generateLocalContent(product: Product): ContentBundle {
       `${product.marketplace.toUpperCase()} PICK`,
       "BUY OR SKIP?",
     ],
+    storyFrames: [
+      `${safeName} on ${product.marketplace}`,
+      `Currently listed at ${price}. Check live price and availability.`,
+      `Review seller and return details before buying. Affiliate link may earn me a commission.`,
+    ],
+    creativeImagePrompt: `Create a clean vertical 9:16 affiliate story background for ${safeName}, a ${product.category.toLowerCase()} product listed on ${product.marketplace}. Use a premium neutral layout with space for a supplied official product image, the verified price ${price}, and a small affiliate disclosure. Do not invent product features, logos, discounts, ratings, or packaging.`,
+    landingPageHeadline: `${safeName}: verified details before you decide`,
+    landingPageBody: `${safeName} is currently listed on ${product.marketplace} at ${price}. Review the current product page, seller, delivery information and return policy before purchasing. The product link may be an affiliate link, so I may earn a commission at no extra cost to you.`,
+    landingPageBullets: [
+      `Current recorded price: ${price}`,
+      `Marketplace: ${product.marketplace}`,
+      "Confirm live availability, seller and return terms on the product page",
+    ],
     pros: [
       `Accessible ${price} price point`,
       `${product.marketplace} listing is easy for viewers to verify`,

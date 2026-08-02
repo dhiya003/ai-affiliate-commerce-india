@@ -11,6 +11,10 @@ import {
 } from "@/lib/notifications/repository";
 import { generateReport } from "@/lib/notifications/reports";
 import { reportPeriodForFrequency } from "@/lib/notifications/schedule";
+import {
+  checkPendingAffiliateContent,
+  prepareApprovedAffiliateContent,
+} from "./content-workflow";
 import { nextCronOccurrence } from "./cron.ts";
 import type { AutomationJobUpdate } from "./schema";
 import type { AutomationJob, AutomationRun } from "./types";
@@ -277,6 +281,28 @@ async function executeJobHandler(
       message: `Captured ${rows.results.length} ranked opportunities.`,
     };
   }
+  if (job.job_type === "CONTENT_GENERATION") {
+    const result = await prepareApprovedAffiliateContent(db);
+    return {
+      status: "SUCCEEDED",
+      processedCount: result.processed,
+      succeededCount: result.succeeded,
+      failedCount: result.failed,
+      metrics: { ...result },
+      message: `Prepared ${result.succeeded} approved affiliate content drafts; nothing was published.`,
+    };
+  }
+  if (job.job_type === "COMPLIANCE_CHECK") {
+    const result = await checkPendingAffiliateContent(db);
+    return {
+      status: "SUCCEEDED",
+      processedCount: result.processed,
+      succeededCount: result.succeeded,
+      failedCount: result.failed,
+      metrics: { ...result },
+      message: `Checked ${result.succeeded} affiliate content drafts; passing drafts still require human approval.`,
+    };
+  }
   if (job.job_type === "SCORE_RETRAINING") {
     const owners = await db
       .prepare(
@@ -355,7 +381,7 @@ async function executeJobHandler(
       processedCount: result.processed,
       succeededCount: result.processed,
       failedCount: 0,
-      metrics: result,
+      metrics: { ...result },
       message: `Processed ${result.processed} due email deliveries.`,
     };
   }

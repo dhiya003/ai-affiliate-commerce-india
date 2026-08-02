@@ -98,6 +98,42 @@ test("scheduled retraining refreshes evidence without activating weights", async
   assert.doesNotMatch(repository, /activateScoringWeightVersion/);
 });
 
+test("content automation prepares approved drafts and compliance without publishing", async () => {
+  const [repository, workflow] = await Promise.all([
+    readFile(
+      new URL("../lib/automation/repository.ts", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../lib/automation/content-workflow.ts", import.meta.url),
+      "utf8",
+    ),
+  ]);
+  assert.match(repository, /job\.job_type === "CONTENT_GENERATION"/);
+  assert.match(repository, /prepareApprovedAffiliateContent/);
+  assert.match(repository, /job\.job_type === "COMPLIANCE_CHECK"/);
+  assert.match(repository, /checkPendingAffiliateContent/);
+  assert.match(workflow, /status = 'APPROVED'/);
+  assert.match(workflow, /affiliate_url LIKE 'https:\/\/%'/);
+  assert.match(workflow, /generateContent\(product\)/);
+  assert.match(workflow, /evaluateCompliance/);
+  assert.doesNotMatch(workflow, /INSERT INTO promotions/);
+  assert.doesNotMatch(workflow, /INSERT INTO tracked_links/);
+  assert.doesNotMatch(workflow, /published_at/);
+});
+
+test("generated content cannot be copied before compliance is run", async () => {
+  const detail = await readFile(
+    new URL("../app/products/[id]/ProductDetailClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    detail,
+    /exportBlocked={!compliance \|\| compliance\.exportBlocked}/,
+  );
+  assert.match(detail, /Run compliance on this exact generated bundle/);
+});
+
 test("automation controls and processing logs are administrator-only", async () => {
   const routes = await Promise.all([
     readFile(
