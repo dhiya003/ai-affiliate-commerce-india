@@ -34,7 +34,7 @@ import { ProductIntakeDialog } from "@/components/products/ProductIntakeDialog";
 import { ProductMedia } from "@/components/products/ProductMedia";
 import type { Product } from "@/lib/products/types";
 import type { DashboardProduct } from "@/lib/sample-products";
-import { chatGPTSignOutPath } from "../chatgpt-auth";
+import { chatGPTSignOutPath } from "../chatgpt-auth-paths";
 
 interface DashboardClientProps {
   products: DashboardProduct[];
