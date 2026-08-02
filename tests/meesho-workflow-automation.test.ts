@@ -8,6 +8,10 @@ import {
   MEESHO_CREATIVE_WIDTH,
   MEESHO_IMAGE_HEIGHT,
 } from "../lib/meesho/creative.ts";
+import {
+  parseMeeshoAutoDmReportCsv,
+  parseMeeshoWishlistCsv,
+} from "../lib/meesho/csv.ts";
 import { publishInstagramImage } from "../lib/meesho/instagram.ts";
 import {
   meeshoWorkflowActionSchema,
@@ -50,6 +54,15 @@ const baseWorkflow: MeeshoCreatorWorkflow = {
   nextRetryAt: null,
   lastErrorCode: null,
   lastErrorMessage: null,
+  autoDmMetrics: {
+    delivered: 0,
+    opened: 0,
+    clicked: 0,
+    conversions: 0,
+    revenue: 0,
+    commission: 0,
+  },
+  lastAutoDmReportAt: null,
   createdAt: "2026-08-02T00:00:00.000Z",
   updatedAt: "2026-08-02T00:02:00.000Z",
 };
@@ -148,6 +161,14 @@ test("workflow summary reports publishing, AutoDM, retry, and human-gate counts"
       status: "AUTODM_ENROLLED",
       publishedAt: "2026-08-02T01:00:00.000Z",
       autoDmEnrolledAt: "2026-08-02T01:05:00.000Z",
+      autoDmMetrics: {
+        delivered: 100,
+        opened: 75,
+        clicked: 20,
+        conversions: 4,
+        revenue: 2000,
+        commission: 140,
+      },
     },
   ]);
   assert.equal(summary.total, 3);
@@ -155,6 +176,30 @@ test("workflow summary reports publishing, AutoDM, retry, and human-gate counts"
   assert.equal(summary.autoDmEnrolled, 1);
   assert.equal(summary.retryScheduled, 1);
   assert.equal(summary.awaitingHumanAction, 1);
+  assert.equal(summary.delivered, 100);
+  assert.equal(summary.conversions, 4);
+  assert.equal(summary.commission, 140);
+});
+
+test("wishlist CSV imports verified facts and an optional official affiliate link", () => {
+  const result = parseMeeshoWishlistCsv(
+    `product_url,title,image_url,category,price,affiliate_url\n${baseWorkflow.productUrl},${baseWorkflow.title},${baseWorkflow.imageUrl},${baseWorkflow.category},504,${baseWorkflow.affiliateUrl}`,
+  );
+  assert.equal(result.length, 1);
+  assert.equal(result[0]?.productUrl, baseWorkflow.productUrl);
+  assert.equal(result[0]?.affiliateUrl, baseWorkflow.affiliateUrl);
+  assert.equal(result[0]?.price, 504);
+});
+
+test("AutoDM report CSV parses delivery and conversion metrics", () => {
+  const result = parseMeeshoAutoDmReportCsv(
+    "workflow_id,delivered,opened,clicked,conversions,revenue,commission\nworkflow-1,100,75,20,4,2000,140",
+  );
+  assert.equal(result.length, 1);
+  assert.equal(result[0]?.workflowId, "workflow-1");
+  assert.equal(result[0]?.delivered, 100);
+  assert.equal(result[0]?.conversions, 4);
+  assert.equal(result[0]?.commission, 140);
 });
 
 test("D1 migration creates durable workflow and retry indexes", async () => {
@@ -172,6 +217,12 @@ test("D1 migration creates durable workflow and retry indexes", async () => {
         "utf8",
       ),
     );
+    database.exec(
+      await readFile(
+        new URL("../drizzle/0017_meesho_safe_fallbacks.sql", import.meta.url),
+        "utf8",
+      ),
+    );
     const table = database
       .prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'meesho_creator_workflows'",
@@ -184,6 +235,16 @@ test("D1 migration creates durable workflow and retry indexes", async () => {
       .get() as { count: number };
     assert.equal(table.name, "meesho_creator_workflows");
     assert.ok(indexes.count >= 4);
+    assert.equal(
+      (
+        database
+          .prepare(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'meesho_autodm_report_imports'",
+          )
+          .get() as { name: string }
+      ).name,
+      "meesho_autodm_report_imports",
+    );
   } finally {
     database.close();
   }

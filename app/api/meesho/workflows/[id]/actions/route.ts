@@ -10,8 +10,10 @@ import {
   markMeeshoPublished,
   markMeeshoPublishFailed,
   markMeeshoPublishing,
+  recordMeeshoEnrollmentFailure,
   recordMeeshoAffiliateLink,
   recordMeeshoCreative,
+  retryMeeshoEnrollment,
 } from "@/lib/meesho/workflow-repository";
 import { meeshoWorkflowActionSchema } from "@/lib/meesho/workflow-schema";
 import { createNotification } from "@/lib/notifications/repository";
@@ -48,6 +50,22 @@ export async function POST(
         await confirmMeeshoAutoDm(id, user.email, input.triggerWords),
         { requestId },
       );
+    }
+    if (input.action === "record-enrollment-failure") {
+      return apiSuccess(
+        await recordMeeshoEnrollmentFailure(
+          id,
+          user.email,
+          input.errorCode,
+          input.errorMessage,
+        ),
+        { requestId, status: 202 },
+      );
+    }
+    if (input.action === "retry-enrollment") {
+      return apiSuccess(await retryMeeshoEnrollment(id, user.email), {
+        requestId,
+      });
     }
 
     const workflow = await getMeeshoWorkflow(id, user.email);

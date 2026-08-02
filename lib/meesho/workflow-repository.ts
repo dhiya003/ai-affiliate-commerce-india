@@ -1,9 +1,11 @@
 import { ApiError } from "../api/errors";
 import type {
+  MeeshoAutoDmMetrics,
   MeeshoCreatorWorkflow,
   MeeshoWorkflowImport,
   MeeshoWorkflowStatus,
 } from "./workflow-schema.ts";
+import { parseMeeshoAutoDmReportCsv, parseMeeshoWishlistCsv } from "./csv.ts";
 import { summarizeMeeshoWorkflowList } from "./workflow-schema.ts";
 
 interface WorkflowRow {
@@ -38,8 +40,26 @@ interface WorkflowRow {
   next_retry_at: string | null;
   last_error_code: string | null;
   last_error_message: string | null;
+  autodm_delivered_count: number;
+  autodm_open_count: number;
+  autodm_click_count: number;
+  autodm_conversion_count: number;
+  autodm_revenue: number;
+  autodm_commission: number;
+  last_autodm_report_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+function metrics(row: WorkflowRow): MeeshoAutoDmMetrics {
+  return {
+    delivered: row.autodm_delivered_count ?? 0,
+    opened: row.autodm_open_count ?? 0,
+    clicked: row.autodm_click_count ?? 0,
+    conversions: row.autodm_conversion_count ?? 0,
+    revenue: row.autodm_revenue ?? 0,
+    commission: row.autodm_commission ?? 0,
+  };
 }
 
 async function database(db?: D1Database) {
@@ -99,6 +119,8 @@ function mapRow(row: WorkflowRow): MeeshoCreatorWorkflow {
     nextRetryAt: row.next_retry_at,
     lastErrorCode: row.last_error_code,
     lastErrorMessage: row.last_error_message,
+    autoDmMetrics: metrics(row),
+    lastAutoDmReportAt: row.last_autodm_report_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -111,7 +133,10 @@ const columns = `id, owner_email, product_id, source, status, product_url,
   approved_at, instagram_creation_id, instagram_media_id,
   instagram_permalink, published_at, autodm_enrolled_at,
   autodm_trigger_words_json, publish_attempt_count, next_retry_at,
-  last_error_code, last_error_message, created_at, updated_at`;
+  last_error_code, last_error_message, autodm_delivered_count,
+  autodm_open_count, autodm_click_count, autodm_conversion_count,
+  autodm_revenue, autodm_commission, last_autodm_report_at,
+  created_at, updated_at`;
 
 export async function createMeeshoWorkflow(
   ownerEmail: string,
@@ -164,6 +189,127 @@ export async function createMeeshoWorkflow(
       "Workflow could not be created.",
     );
   return mapRow(created);
+}
+
+export async function importMeeshoWishlistCsv(
+  ownerEmail: string,
+  csv: string,
+  db?: D1Database,
+) {
+  const results = [] as MeeshoCreatorWorkflow[];
+  const errors: { row: number; message: string }[] = [];
+  for (const [index, row] of parseMeeshoWishlistCsv(csv).entries()) {
+    try {
+      const imported = await createMeeshoWorkflow(
+        ownerEmail,
+        {
+          productId: row.productId,
+          productUrl: row.productUrl,
+          title: row.title,
+          imageUrl: row.imageUrl,
+          category: row.category,
+          price: row.price,
+          originalPrice: row.originalPrice,
+          supplierName: row.supplierName,
+          observedAt: row.observedAt,
+        },
+        db,
+      );
+      results.push(
+        row.affiliateUrl
+          ? await recordMeeshoAffiliateLink(
+              imported.id,
+              ownerEmail,
+              row.affiliateUrl,
+              db,
+            )
+          : imported,
+      );
+    } catch (error) {
+      errors.push({
+        row: index + 2,
+        message: error instanceof Error ? error.message : "Row import failed.",
+      });
+    }
+  }
+  return {
+    imported: results.length,
+    failed: errors.length,
+    errors,
+    workflows: results,
+  };
+}
+
+export async function importMeeshoAutoDmReportCsv(
+  ownerEmail: string,
+  csv: string,
+  reportDate = new Date().toISOString().slice(0, 10),
+  db?: D1Database,
+) {
+  const store = await database(db);
+  const now = new Date().toISOString();
+  let matched = 0;
+  const errors: { row: number; message: string }[] = [];
+  for (const [index, row] of parseMeeshoAutoDmReportCsv(csv).entries()) {
+    const workflowId = row.workflowId;
+    const productUrl = row.productUrl;
+    if (!workflowId && !productUrl) {
+      errors.push({
+        row: index + 2,
+        message: "workflow_id or product_url is required.",
+      });
+      continue;
+    }
+    await store
+      .prepare(
+        `INSERT INTO meesho_autodm_report_imports (id, owner_email, workflow_id, report_date, delivered_count, open_count, click_count, conversion_count, revenue, commission, source_row_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        crypto.randomUUID(),
+        ownerEmail,
+        workflowId || null,
+        reportDate,
+        row.delivered,
+        row.opened,
+        row.clicked,
+        row.conversions,
+        row.revenue,
+        row.commission,
+        JSON.stringify(row.sourceRow),
+        now,
+      )
+      .run();
+    const result = await store
+      .prepare(
+        `UPDATE meesho_creator_workflows SET
+          autodm_delivered_count = autodm_delivered_count + ?, autodm_open_count = autodm_open_count + ?,
+          autodm_click_count = autodm_click_count + ?, autodm_conversion_count = autodm_conversion_count + ?,
+          autodm_revenue = autodm_revenue + ?, autodm_commission = autodm_commission + ?,
+          last_autodm_report_at = ?, updated_at = ?
+         WHERE owner_email = ? AND (${workflowId ? "id = ?" : "product_url = ?"})`,
+      )
+      .bind(
+        row.delivered,
+        row.opened,
+        row.clicked,
+        row.conversions,
+        row.revenue,
+        row.commission,
+        now,
+        now,
+        ownerEmail,
+        workflowId || productUrl,
+      )
+      .run();
+    if ((result.meta?.changes ?? 0) > 0) matched += 1;
+    else
+      errors.push({
+        row: index + 2,
+        message: "No workflow matched the report row.",
+      });
+  }
+  return { matched, failed: errors.length, errors };
 }
 
 export async function listMeeshoWorkflows(ownerEmail: string, db?: D1Database) {
@@ -424,6 +570,87 @@ export async function confirmMeeshoAutoDm(
     .bind(now, JSON.stringify(triggerWords), now, id, ownerEmail)
     .run();
   return requireWorkflow(id, ownerEmail, db);
+}
+
+export async function recordMeeshoEnrollmentFailure(
+  id: string,
+  ownerEmail: string,
+  errorCode: string,
+  errorMessage: string,
+  db?: D1Database,
+) {
+  const workflow = await requireWorkflow(id, ownerEmail, db);
+  requireStatus(workflow, [
+    "PUBLISHED",
+    "AUTODM_ENROLLED",
+    "RETRY_SCHEDULED",
+    "FAILED",
+  ]);
+  const now = new Date();
+  await (
+    await database(db)
+  )
+    .prepare(
+      `UPDATE meesho_creator_workflows SET status = 'RETRY_SCHEDULED', next_retry_at = ?, last_error_code = ?, last_error_message = ?, updated_at = ? WHERE id = ? AND owner_email = ?`,
+    )
+    .bind(
+      new Date(now.getTime() + 15 * 60_000).toISOString(),
+      errorCode,
+      errorMessage,
+      now.toISOString(),
+      id,
+      ownerEmail,
+    )
+    .run();
+  return requireWorkflow(id, ownerEmail, db);
+}
+
+export async function retryMeeshoEnrollment(
+  id: string,
+  ownerEmail: string,
+  db?: D1Database,
+) {
+  const workflow = await requireWorkflow(id, ownerEmail, db);
+  requireStatus(workflow, ["RETRY_SCHEDULED", "FAILED"]);
+  const now = new Date().toISOString();
+  await (
+    await database(db)
+  )
+    .prepare(
+      `UPDATE meesho_creator_workflows SET status = 'PUBLISHED', next_retry_at = NULL, last_error_code = NULL, last_error_message = NULL, updated_at = ? WHERE id = ? AND owner_email = ?`,
+    )
+    .bind(now, id, ownerEmail)
+    .run();
+  return requireWorkflow(id, ownerEmail, db);
+}
+
+export function getMeeshoReadinessDiagnostics(
+  workflows: MeeshoCreatorWorkflow[],
+) {
+  return {
+    total: workflows.length,
+    missingAffiliateLinks: workflows.filter((item) => !item.affiliateUrl)
+      .length,
+    missingCreative: workflows.filter(
+      (item) => !item.caption || !item.creativePublicToken,
+    ).length,
+    pendingAutoDmEnrollment: workflows.filter(
+      (item) => item.status === "PUBLISHED",
+    ).length,
+    failedEnrollmentOrPublish: workflows.filter((item) =>
+      ["FAILED", "RETRY_SCHEDULED"].includes(item.status),
+    ).length,
+    lastErrors: workflows
+      .filter((item) => item.lastErrorCode)
+      .slice(0, 10)
+      .map((item) => ({
+        id: item.id,
+        title: item.title,
+        code: item.lastErrorCode,
+        message: item.lastErrorMessage,
+        nextRetryAt: item.nextRetryAt,
+      })),
+  };
 }
 
 export function summarizeMeeshoWorkflows(workflows: MeeshoCreatorWorkflow[]) {

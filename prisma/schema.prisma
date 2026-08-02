@@ -1635,10 +1635,37 @@ model MeeshoCreatorWorkflow {
   nextRetryAt            DateTime?
   lastErrorCode          String?
   lastErrorMessage       String?
+  autoDmDeliveredCount   Int                         @default(0)
+  autoDmOpenCount        Int                         @default(0)
+  autoDmClickCount       Int                         @default(0)
+  autoDmConversionCount  Int                         @default(0)
+  autoDmRevenue          Decimal                     @default(0) @db.Decimal(12, 2)
+  autoDmCommission       Decimal                     @default(0) @db.Decimal(12, 2)
+  lastAutoDmReportAt     DateTime?
   createdAt              DateTime                    @default(now())
   updatedAt              DateTime                    @updatedAt
+  autoDmReportImports    MeeshoAutoDmReportImport[]
 
   @@unique([ownerEmail, productUrl])
   @@index([ownerEmail, status, updatedAt(sort: Desc)])
   @@index([status, nextRetryAt])
+}
+
+model MeeshoAutoDmReportImport {
+  id              String                 @id @default(cuid())
+  ownerEmail      String
+  workflowId      String?
+  reportDate      DateTime
+  deliveredCount  Int                    @default(0)
+  openCount       Int                    @default(0)
+  clickCount      Int                    @default(0)
+  conversionCount Int                    @default(0)
+  revenue         Decimal                @default(0) @db.Decimal(12, 2)
+  commission      Decimal                @default(0) @db.Decimal(12, 2)
+  sourceRow       Json                   @default("{}")
+  createdAt       DateTime               @default(now())
+  workflow        MeeshoCreatorWorkflow? @relation(fields: [workflowId], references: [id], onDelete: SetNull)
+
+  @@index([ownerEmail, reportDate])
+  @@index([workflowId])
 }

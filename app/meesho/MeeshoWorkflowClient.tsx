@@ -12,6 +12,9 @@ interface Summary {
   awaitingHumanAction: number;
   retryScheduled: number;
   failed: number;
+  delivered: number;
+  conversions: number;
+  commission: number;
   byStatus: Record<string, number>;
 }
 
@@ -48,6 +51,7 @@ export function MeeshoWorkflowClient({
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [diagnostics, setDiagnostics] = useState<string | null>(null);
 
   async function refresh() {
     const result = await data<{
@@ -118,6 +122,50 @@ export function MeeshoWorkflowClient({
     }
   }
 
+  async function postCsv(event: FormEvent<HTMLFormElement>, endpoint: string) {
+    event.preventDefault();
+    setBusy(endpoint);
+    setError(null);
+    const form = new FormData(event.currentTarget);
+    try {
+      const result = await data<Record<string, unknown>>(
+        await fetch(endpoint, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            csv: form.get("csv"),
+            reportDate: form.get("reportDate") || undefined,
+          }),
+        }),
+      );
+      event.currentTarget.reset();
+      await refresh();
+      setNotice(JSON.stringify(result));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "CSV import failed.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function loadReadiness() {
+    setBusy("readiness");
+    setError(null);
+    try {
+      setDiagnostics(
+        JSON.stringify(
+          await data(await fetch("/api/meesho/readiness")),
+          null,
+          2,
+        ),
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Readiness failed.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#f3f5f1] text-[#19231d]">
       <header className="border-b border-[#dce2db] bg-[#102c1e] text-white">
@@ -146,6 +194,9 @@ export function MeeshoWorkflowClient({
             ["Human action", summary.awaitingHumanAction],
             ["Retry", summary.retryScheduled],
             ["Failed", summary.failed],
+            ["Delivered", summary.delivered],
+            ["Conversions", summary.conversions],
+            ["Commission", `₹${summary.commission.toLocaleString("en-IN")}`],
           ].map(([label, value]) => (
             <div
               key={label}
@@ -189,6 +240,69 @@ export function MeeshoWorkflowClient({
             {busy === "import" ? "Importing…" : "Import wishlist product"}
           </button>
         </form>
+        <section className="grid gap-4 lg:grid-cols-3">
+          <form
+            onSubmit={(event) => postCsv(event, "/api/meesho/workflows/bulk")}
+            className="rounded-3xl border border-[#dce2db] bg-white p-5"
+          >
+            <h2 className="text-lg font-bold">Bulk wishlist CSV</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Paste exported/hand-curated rows only. Optional affiliate_url is
+              accepted.
+            </p>
+            <textarea
+              required
+              name="csv"
+              rows={6}
+              className="mt-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              placeholder="product_url,title,image_url,category,price,affiliate_url"
+            />
+            <button className="mt-3 rounded-xl bg-[#173f2b] px-4 py-2 text-sm font-semibold text-white">
+              Import CSV
+            </button>
+          </form>
+          <form
+            onSubmit={(event) => postCsv(event, "/api/meesho/autodm-reports")}
+            className="rounded-3xl border border-[#dce2db] bg-white p-5"
+          >
+            <h2 className="text-lg font-bold">AutoDM report CSV</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Ingest delivery/conversion exports by workflow_id or product_url.
+            </p>
+            <input
+              name="reportDate"
+              type="date"
+              className="mt-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            />
+            <textarea
+              required
+              name="csv"
+              rows={5}
+              className="mt-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              placeholder="workflow_id,delivered,opened,clicked,conversions,revenue,commission"
+            />
+            <button className="mt-3 rounded-xl bg-[#173f2b] px-4 py-2 text-sm font-semibold text-white">
+              Ingest report
+            </button>
+          </form>
+          <div className="rounded-3xl border border-[#dce2db] bg-white p-5">
+            <h2 className="text-lg font-bold">Readiness diagnostics</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Local checks only. No private Meesho APIs or live traffic.
+            </p>
+            <button
+              onClick={() => void loadReadiness()}
+              className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Run diagnostics
+            </button>
+            {diagnostics ? (
+              <pre className="mt-3 overflow-auto rounded-xl bg-slate-950 p-3 text-xs text-white">
+                {diagnostics}
+              </pre>
+            ) : null}
+          </div>
+        </section>
         {notice ? (
           <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">
             {notice}
@@ -307,7 +421,33 @@ export function MeeshoWorkflowClient({
                       >
                         Confirm AutoDM enrollment
                       </button>
+                      <button
+                        onClick={() => {
+                          const errorMessage = window.prompt(
+                            "Describe the AutoDM enrollment issue",
+                          );
+                          if (errorMessage)
+                            void action(workflow, {
+                              action: "record-enrollment-failure",
+                              errorCode: "AUTODM_ENROLLMENT_FAILED",
+                              errorMessage,
+                            });
+                        }}
+                        className="rounded-xl border border-red-200 px-3 py-2 text-sm text-red-700"
+                      >
+                        Record AutoDM failure
+                      </button>
                     </>
+                  ) : null}
+                  {workflow.status === "RETRY_SCHEDULED" ? (
+                    <button
+                      onClick={() =>
+                        void action(workflow, { action: "retry-enrollment" })
+                      }
+                      className="rounded-xl border border-amber-200 px-3 py-2 text-sm text-amber-700"
+                    >
+                      Retry AutoDM enrollment
+                    </button>
                   ) : null}
                   {workflow.instagramPermalink ? (
                     <a
@@ -328,6 +468,12 @@ export function MeeshoWorkflowClient({
                     {workflow.lastErrorCode}: {workflow.lastErrorMessage}
                   </p>
                 ) : null}
+                <p className="mt-3 text-xs text-slate-500">
+                  AutoDM metrics: delivered {workflow.autoDmMetrics.delivered},
+                  clicked {workflow.autoDmMetrics.clicked}, conversions{" "}
+                  {workflow.autoDmMetrics.conversions}, commission ₹
+                  {workflow.autoDmMetrics.commission.toLocaleString("en-IN")}
+                </p>
               </article>
             );
           })}

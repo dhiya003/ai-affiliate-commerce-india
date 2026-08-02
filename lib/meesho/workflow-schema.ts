@@ -18,6 +18,15 @@ export const meeshoWorkflowImportSchema = z.object({
   observedAt: z.iso.datetime(),
 });
 
+export const meeshoBulkWishlistImportSchema = z.object({
+  csv: z.string().min(1).max(500_000),
+});
+
+export const meeshoAutoDmReportImportSchema = z.object({
+  csv: z.string().min(1).max(1_000_000),
+  reportDate: z.iso.date().optional(),
+});
+
 export const meeshoWorkflowActionSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("record-affiliate-link"),
@@ -41,10 +50,31 @@ export const meeshoWorkflowActionSchema = z.discriminatedUnion("action", [
       .max(10)
       .default(["LINK", "PRICE", "DETAILS", "DM"]),
   }),
+  z.object({
+    action: z.literal("record-enrollment-failure"),
+    errorCode: z.string().trim().min(2).max(80),
+    errorMessage: z.string().trim().min(2).max(500),
+  }),
+  z.object({ action: z.literal("retry-enrollment") }),
 ]);
 
 export type MeeshoWorkflowImport = z.infer<typeof meeshoWorkflowImportSchema>;
 export type MeeshoWorkflowAction = z.infer<typeof meeshoWorkflowActionSchema>;
+export type MeeshoBulkWishlistImport = z.infer<
+  typeof meeshoBulkWishlistImportSchema
+>;
+export type MeeshoAutoDmReportImport = z.infer<
+  typeof meeshoAutoDmReportImportSchema
+>;
+
+export interface MeeshoAutoDmMetrics {
+  delivered: number;
+  opened: number;
+  clicked: number;
+  conversions: number;
+  revenue: number;
+  commission: number;
+}
 
 export const MEESHO_WORKFLOW_STATUSES = [
   "IMPORTED",
@@ -92,6 +122,8 @@ export interface MeeshoCreatorWorkflow {
   nextRetryAt: string | null;
   lastErrorCode: string | null;
   lastErrorMessage: string | null;
+  autoDmMetrics: MeeshoAutoDmMetrics;
+  lastAutoDmReportAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -119,6 +151,18 @@ export function summarizeMeeshoWorkflowList(
       ({ status }) => status === "RETRY_SCHEDULED",
     ).length,
     failed: workflows.filter(({ status }) => status === "FAILED").length,
+    delivered: workflows.reduce(
+      (sum, item) => sum + item.autoDmMetrics.delivered,
+      0,
+    ),
+    conversions: workflows.reduce(
+      (sum, item) => sum + item.autoDmMetrics.conversions,
+      0,
+    ),
+    commission: workflows.reduce(
+      (sum, item) => sum + item.autoDmMetrics.commission,
+      0,
+    ),
     byStatus,
   };
 }
