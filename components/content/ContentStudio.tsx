@@ -126,6 +126,14 @@ function sections(bundle: ContentBundle): ContentSection[] {
       value: listText(bundle.landingPageBullets),
     });
   }
+  if (bundle.autoDm?.enabled) {
+    result.splice(7, 0, {
+      key: "autoDm",
+      label: "Meesho AutoDM handoff",
+      value: `${bundle.autoDm.commentCta}\nTriggers: ${bundle.autoDm.triggerWords.join(", ")}\nAfter publishing, enroll the post at affiliate.meesho.com/auto-dm-post-linking. The product URL must not appear in the Instagram caption.`,
+      wide: true,
+    });
+  }
   return result;
 }
 

@@ -1,6 +1,6 @@
 import type { Product } from "@/lib/products/types";
 
-export const CONTENT_PROMPT_VERSION = "affiliate-bundle-v1.1.0";
+export const CONTENT_PROMPT_VERSION = "affiliate-bundle-v1.2.0";
 
 export const CONTENT_SYSTEM_INSTRUCTIONS = `
 You are an affiliate content strategist for Indian social-commerce creators.
@@ -36,6 +36,10 @@ export function buildContentPrompt(product: Product): string {
     "Use exactly three distinct reel hooks. Hashtags must start with # and contain no spaces.",
     "Create 3–5 concise Instagram Story frames, a factual image-generation prompt that does not add unsupported product details, and mini landing-page copy with a headline, body and 3–6 bullets.",
     "Cautions must be useful purchasing considerations, not invented defects.",
+    product.marketplace === "Meesho"
+      ? "For Instagram, do not put any product or affiliate URL in the caption. Use Meesho AutoDM delivery, include the CTA ‘Comment LINK and I’ll send the product details to your DM.’, and place #ad at the end of the caption immediately before the separate hashtag list."
+      : "Use the approved affiliate destination only in channels that support links and keep the disclosure clear.",
+    "The visual prompt must preserve a reusable 4:5 template with 60% dedicated to the verified product image and 40% to factual copy. Never replace or invent the product image.",
     `Product facts:\n${JSON.stringify(facts, null, 2)}`,
   ].join("\n\n");
 }

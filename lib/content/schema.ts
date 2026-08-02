@@ -31,6 +31,23 @@ export const contentBundleSchema = z.object({
   pros: z.array(shortText).min(2).max(6),
   cautions: z.array(shortText).min(1).max(5),
   affiliateDisclosure: z.string().trim().min(10).max(300),
+  linkDelivery: z.enum(["AUTODM", "CAPTION_LINK", "LANDING_PAGE"]).optional(),
+  autoDm: z
+    .object({
+      enabled: z.boolean(),
+      triggerWords: z.array(shortText).min(1).max(10),
+      commentCta: shortText,
+      enrollmentRequired: z.boolean(),
+    })
+    .optional(),
+  visualTemplate: z
+    .object({
+      aspectRatio: z.literal("4:5"),
+      productImagePercent: z.literal(60),
+      contentPercent: z.literal(40),
+      useVerifiedImageOnly: z.literal(true),
+    })
+    .optional(),
 });
 
 export type ContentBundle = z.infer<typeof contentBundleSchema>;

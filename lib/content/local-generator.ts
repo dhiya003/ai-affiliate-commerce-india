@@ -30,6 +30,7 @@ export function generateLocalContent(product: Product): ContentBundle {
   const audience = product.category.toLowerCase();
   const safeName = product.name;
 
+  const usesMeeshoAutoDm = product.marketplace === "Meesho";
   return {
     summary: `${safeName} is a ${product.marketplace} ${product.category.toLowerCase()} pick at ${price}. It is ${rating} and ${discount}.`,
     whyPromote: `This product gives creators a concrete value story: a clear ${price} price point, recognisable ${product.marketplace} purchase path, and an opportunity score of ${Math.round(product.opportunityScore ?? 0)}/100. Lead with the use case and verified product facts; invite viewers to compare the live listing before buying.`,
@@ -45,7 +46,9 @@ export function generateLocalContent(product: Product): ContentBundle {
     ],
     reelScript30: `Here’s a quick ${product.marketplace} find: ${safeName}, currently listed at ${price}. It is ${rating}, and the biggest content angle is practical value rather than hype. If you’re shopping for ${product.category.toLowerCase()}, compare the features and latest price on the product page. I’ve added the link for easy reference. It may be an affiliate link, so I may earn a commission at no extra cost to you.`,
     reelScript60: `Stop scrolling if you’re comparing ${product.category.toLowerCase()} options. This is ${safeName} on ${product.marketplace}, currently listed at ${price}. The listing is ${rating}, and it is ${discount}. What makes it worth considering is the straightforward use case and accessible price point. Before buying, open the listing, confirm the current price, seller, delivery details and return policy, because marketplace information can change. If it fits your needs, use the link I’ve shared to take a closer look. It may be an affiliate link, which means I may earn a small commission at no extra cost to you.`,
-    caption: `${safeName} is on my value-watch list at ${price}. If you’re comparing ${product.category.toLowerCase()} options, check the latest listing details, seller and return policy before deciding.\n\nThe shared link may be an affiliate link, so I may earn a commission at no extra cost to you.`,
+    caption: usesMeeshoAutoDm
+      ? `${safeName} is on my value-watch list at ${price}. Comment LINK and I’ll send the product details to your DM. Price and availability may change on Meesho. #ad`
+      : `${safeName} is on my value-watch list at ${price}. If you’re comparing ${product.category.toLowerCase()} options, check the latest listing details, seller and return policy before deciding.\n\nThe shared link may be an affiliate link, so I may earn a commission at no extra cost to you.`,
     hashtags: Array.from(
       new Set([
         hashtag(product.marketplace),
@@ -60,7 +63,9 @@ export function generateLocalContent(product: Product): ContentBundle {
       ]),
     ).slice(0, 12),
     ctas: [
-      "Check the latest price and details through the link.",
+      usesMeeshoAutoDm
+        ? "Comment LINK and I’ll send the product details to your DM."
+        : "Check the latest price and details through the link.",
       "Save this for your next product comparison.",
       "Share this with someone who is shopping in this category.",
     ],
@@ -97,5 +102,21 @@ export function generateLocalContent(product: Product): ContentBundle {
     ],
     affiliateDisclosure:
       "This post may contain an affiliate link. I may earn a commission at no extra cost to you.",
+    linkDelivery: usesMeeshoAutoDm ? "AUTODM" : "CAPTION_LINK",
+    autoDm: usesMeeshoAutoDm
+      ? {
+          enabled: true,
+          triggerWords: ["LINK", "PRICE", "DETAILS", "DM"],
+          commentCta:
+            "Comment LINK and I’ll send the product details to your DM.",
+          enrollmentRequired: true,
+        }
+      : undefined,
+    visualTemplate: {
+      aspectRatio: "4:5",
+      productImagePercent: 60,
+      contentPercent: 40,
+      useVerifiedImageOnly: true,
+    },
   };
 }

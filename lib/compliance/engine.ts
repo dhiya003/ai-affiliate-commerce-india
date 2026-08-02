@@ -145,6 +145,11 @@ export function evaluateCompliance({
     (discount) => Math.abs(discount - expectedDiscount) > 1,
   );
   const comboClaimed = /\b(combo|bundle|pack of \d+)\b/i.test(text);
+  const meeshoAutoDmCaption =
+    product.marketplace !== "Meesho" ||
+    (!/https?:\/\//i.test(content.caption) &&
+      /comment\s+link/i.test(content.caption) &&
+      /#ad\s*$/i.test(content.caption.trim()));
 
   const results: ComplianceResult[] = [
     result(
@@ -224,6 +229,16 @@ export function evaluateCompliance({
       product.marketplace === "Amazon"
         ? "Add the applicable Amazon Associate disclosure before export."
         : `Name ${product.marketplace} or the affiliate relationship clearly in the disclosure.`,
+      { marketplace: product.marketplace },
+    ),
+    result(
+      "MEESHO_AUTODM_CAPTION",
+      meeshoAutoDmCaption,
+      "BLOCKING",
+      meeshoAutoDmCaption
+        ? "Meesho caption uses URL-free AutoDM delivery with #ad before hashtags."
+        : "Meesho Instagram caption must omit URLs, ask viewers to comment LINK, and end with #ad before the separate hashtag list.",
+      "Remove product URLs, add the Comment LINK AutoDM CTA, and place #ad at the end of the caption.",
       { marketplace: product.marketplace },
     ),
     result(

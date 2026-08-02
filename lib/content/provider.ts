@@ -221,8 +221,40 @@ export async function generateContent(
     );
   }
 
+  const content =
+    product.marketplace === "Meesho"
+      ? {
+          ...validated.data,
+          caption: validated.data.caption
+            .replace(/https?:\/\/\S+/gi, "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .replace(/\s*#ad\s*$/i, "")
+            .concat(
+              " Comment LINK and I’ll send the product details to your DM. Price and availability may change on Meesho. #ad",
+            ),
+          ctas: [
+            "Comment LINK and I’ll send the product details to your DM.",
+            ...validated.data.ctas.filter((cta) => !/link|url|bio/i.test(cta)),
+          ].slice(0, 5),
+          linkDelivery: "AUTODM" as const,
+          autoDm: {
+            enabled: true,
+            triggerWords: ["LINK", "PRICE", "DETAILS", "DM"],
+            commentCta:
+              "Comment LINK and I’ll send the product details to your DM.",
+            enrollmentRequired: true,
+          },
+          visualTemplate: {
+            aspectRatio: "4:5" as const,
+            productImagePercent: 60 as const,
+            contentPercent: 40 as const,
+            useVerifiedImageOnly: true as const,
+          },
+        }
+      : validated.data;
   return {
-    content: validated.data,
+    content,
     promptVersion: CONTENT_PROMPT_VERSION,
     provider: "openai",
     providerModel: model,
