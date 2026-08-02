@@ -296,6 +296,7 @@ enum NotificationType {
   BROKEN_AFFILIATE_LINK
   COMPLIANCE_FAILURE
   HIGH_OPPORTUNITY_PRODUCT
+  CREATOR_WORKFLOW_FAILURE
 }
 
 enum NotificationSeverity {
@@ -338,6 +339,18 @@ enum ReportStatus {
 enum ReportFormat {
   CSV
   JSON
+}
+
+enum MeeshoCreatorWorkflowStatus {
+  IMPORTED
+  LINK_READY
+  CREATIVE_READY
+  APPROVED
+  PUBLISHING
+  PUBLISHED
+  AUTODM_ENROLLED
+  RETRY_SCHEDULED
+  FAILED
 }
 
 model User {
@@ -1588,4 +1601,44 @@ model RateLimitBucket {
   expiresAt       DateTime
 
   @@index([expiresAt])
+}
+
+model MeeshoCreatorWorkflow {
+  id                     String                      @id @default(cuid())
+  ownerEmail             String
+  productId              String?
+  source                 String                      @default("MEESHO_WISHLIST")
+  status                 MeeshoCreatorWorkflowStatus @default(IMPORTED)
+  productUrl             String
+  affiliateUrl           String?
+  title                  String
+  imageUrl               String
+  category               String
+  price                  Decimal                     @db.Decimal(12, 2)
+  originalPrice          Decimal?                    @db.Decimal(12, 2)
+  supplierName           String?
+  observedAt             DateTime
+  factsVerifiedAt        DateTime?
+  generatedContentId     String?
+  caption                String?
+  hashtags               Json                        @default("[]")
+  creativePublicToken    String?                     @unique
+  creativeRenderedAt     DateTime?
+  approvedAt             DateTime?
+  instagramCreationId    String?
+  instagramMediaId       String?
+  instagramPermalink     String?
+  publishedAt            DateTime?
+  autoDmEnrolledAt       DateTime?
+  autoDmTriggerWords     Json                        @default("[\"LINK\",\"PRICE\",\"DETAILS\",\"DM\"]")
+  publishAttemptCount    Int                         @default(0)
+  nextRetryAt            DateTime?
+  lastErrorCode          String?
+  lastErrorMessage       String?
+  createdAt              DateTime                    @default(now())
+  updatedAt              DateTime                    @updatedAt
+
+  @@unique([ownerEmail, productUrl])
+  @@index([ownerEmail, status, updatedAt(sort: Desc)])
+  @@index([status, nextRetryAt])
 }

@@ -11,6 +11,7 @@ import {
 } from "@/lib/notifications/repository";
 import { generateReport } from "@/lib/notifications/reports";
 import { reportPeriodForFrequency } from "@/lib/notifications/schedule";
+import { retryDueMeeshoPublications } from "@/lib/meesho/retry";
 import {
   checkPendingAffiliateContent,
   prepareApprovedAffiliateContent,
@@ -376,13 +377,14 @@ async function executeJobHandler(
   }
   if (job.job_type === "NOTIFICATION_DELIVERY_RETRY") {
     const result = await retryDueNotificationDeliveries();
+    const meesho = await retryDueMeeshoPublications(db, executionTime);
     return {
       status: "SUCCEEDED",
-      processedCount: result.processed,
-      succeededCount: result.processed,
-      failedCount: 0,
-      metrics: { ...result },
-      message: `Processed ${result.processed} due email deliveries.`,
+      processedCount: result.processed + meesho.processed,
+      succeededCount: result.processed + meesho.succeeded,
+      failedCount: meesho.failed,
+      metrics: { emailDeliveries: result.processed, meesho },
+      message: `Processed ${result.processed} due email deliveries and ${meesho.processed} Instagram publication retries.`,
     };
   }
   if (job.job_type === "SUMMARY_REPORT_GENERATION") {

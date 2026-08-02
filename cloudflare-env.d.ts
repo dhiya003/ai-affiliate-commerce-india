@@ -20,5 +20,9 @@ declare namespace Cloudflare {
     ERROR_MONITORING_TOKEN?: string;
     NOTIFICATION_EMAIL_WEBHOOK_URL?: string;
     NOTIFICATION_EMAIL_TOKEN?: string;
+    APP_PUBLIC_URL?: string;
+    META_ACCESS_TOKEN?: string;
+    INSTAGRAM_BUSINESS_ACCOUNT_ID?: string;
+    META_GRAPH_VERSION?: string;
   }
 }

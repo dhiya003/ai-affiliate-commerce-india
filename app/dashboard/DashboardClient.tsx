@@ -279,6 +279,7 @@ export function DashboardClient({ products, user }: DashboardClientProps) {
             [FlaskConical, "Experiments", "/experiments", false],
             [SlidersHorizontal, "Scoring governance", "/optimization", false],
             [Workflow, "Automation", "/automation", false],
+            [Sparkles, "Meesho creator", "/meesho", false],
             [Bell, "Notifications", "/notifications", false],
             [Settings, "Administration", "/admin", false],
             [Bookmark, "Saved", "/saved", false],

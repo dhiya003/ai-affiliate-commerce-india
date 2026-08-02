@@ -16,6 +16,7 @@ export const NOTIFICATION_TYPES = [
   "BROKEN_AFFILIATE_LINK",
   "COMPLIANCE_FAILURE",
   "HIGH_OPPORTUNITY_PRODUCT",
+  "CREATOR_WORKFLOW_FAILURE",
 ] as const;
 
 export const notificationPreferenceSchema = z

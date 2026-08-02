@@ -756,6 +756,33 @@ export async function generateNotificationAlerts(
       dedupeKey: `FAILED_IMPORT:${row.id}`,
     });
   }
+  const failedCreatorWorkflows = await db
+    .prepare(
+      `SELECT id, title, last_error_code, last_error_message
+       FROM meesho_creator_workflows
+       WHERE owner_email = ? AND status = 'FAILED' AND updated_at >= ?
+       ORDER BY updated_at DESC LIMIT 50`,
+    )
+    .bind(email, since)
+    .all<{
+      id: string;
+      title: string;
+      last_error_code: string | null;
+      last_error_message: string | null;
+    }>();
+  for (const row of failedCreatorWorkflows.results) {
+    candidates.push({
+      type: "CREATOR_WORKFLOW_FAILURE",
+      severity: "CRITICAL",
+      title: "Instagram creator workflow failed",
+      body: `${row.title}: ${row.last_error_message ?? "Publishing failed."}`,
+      actionUrl: "/meesho",
+      entityType: "MEESHO_CREATOR_WORKFLOW",
+      entityId: row.id,
+      dedupeKey: `CREATOR_WORKFLOW_FAILURE:${row.id}:${row.last_error_code ?? "UNKNOWN"}`,
+      metadata: { errorCode: row.last_error_code },
+    });
+  }
   const staleSources = await db
     .prepare(
       `SELECT id, marketplace, name, last_success_at
