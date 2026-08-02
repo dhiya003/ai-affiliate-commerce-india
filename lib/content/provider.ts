@@ -246,7 +246,7 @@ export async function generateContent(
             enrollmentRequired: true,
           },
           visualTemplate: {
-            aspectRatio: "4:5" as const,
+            aspectRatio: "9:16" as const,
             productImagePercent: 60 as const,
             contentPercent: 40 as const,
             useVerifiedImageOnly: true as const,

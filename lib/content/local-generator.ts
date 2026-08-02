@@ -113,7 +113,7 @@ export function generateLocalContent(product: Product): ContentBundle {
         }
       : undefined,
     visualTemplate: {
-      aspectRatio: "4:5",
+      aspectRatio: "9:16",
       productImagePercent: 60,
       contentPercent: 40,
       useVerifiedImageOnly: true,

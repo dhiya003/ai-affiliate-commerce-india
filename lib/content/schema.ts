@@ -42,7 +42,7 @@ export const contentBundleSchema = z.object({
     .optional(),
   visualTemplate: z
     .object({
-      aspectRatio: z.literal("4:5"),
+      aspectRatio: z.literal("9:16"),
       productImagePercent: z.literal(60),
       contentPercent: z.literal(40),
       useVerifiedImageOnly: z.literal(true),

@@ -36,7 +36,7 @@ export interface MeeshoCreatorHandoff {
     triggerCta: "Comment LINK and I’ll send the product details to your DM.";
   };
   visualTemplate: {
-    aspectRatio: "4:5";
+    aspectRatio: "9:16";
     productImagePercent: 60;
     contentPercent: 40;
     useVerifiedImageOnly: true;
@@ -68,7 +68,7 @@ export function buildMeeshoCreatorHandoff(
       triggerCta: "Comment LINK and I’ll send the product details to your DM.",
     },
     visualTemplate: {
-      aspectRatio: "4:5",
+      aspectRatio: "9:16",
       productImagePercent: 60,
       contentPercent: 40,
       useVerifiedImageOnly: true,

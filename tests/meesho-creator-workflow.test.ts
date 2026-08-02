@@ -57,7 +57,7 @@ test("Meesho wishlist handoff uses official Creator Club destinations", () => {
   assert.match(handoff.affiliateLinkCreationUrl, /affiliate\.meesho\.com/);
   assert.match(handoff.autoDmEnrollmentUrl, /auto-dm-post-linking/);
   assert.deepEqual(handoff.visualTemplate, {
-    aspectRatio: "4:5",
+    aspectRatio: "9:16",
     productImagePercent: 60,
     contentPercent: 40,
     useVerifiedImageOnly: true,

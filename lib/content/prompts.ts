@@ -39,7 +39,7 @@ export function buildContentPrompt(product: Product): string {
     product.marketplace === "Meesho"
       ? "For Instagram, do not put any product or affiliate URL in the caption. Use Meesho AutoDM delivery, include the CTA ‘Comment LINK and I’ll send the product details to your DM.’, and place #ad at the end of the caption immediately before the separate hashtag list."
       : "Use the approved affiliate destination only in channels that support links and keep the disclosure clear.",
-    "The visual prompt must preserve a reusable 4:5 template with 60% dedicated to the verified product image and 40% to factual copy. Never replace or invent the product image.",
+    "The visual prompt must preserve a reusable 9:16 template with 60% dedicated to the verified product image and 40% to factual copy. Never replace or invent the product image.",
     `Product facts:\n${JSON.stringify(facts, null, 2)}`,
   ].join("\n\n");
 }
